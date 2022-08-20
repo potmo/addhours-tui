@@ -25,11 +25,13 @@ class BindableButton: BoundDrawable {
     }
     
     init(text: String) {
-        let style = BindableButton.getStyleFrom(state: .normal)
+        let style = State(wrappedValue: BindableButton.getStyleFrom(state: .normal))
+        self._style = style
+        let textBind = Binding(wrappedValue: text)
+        self._text = textBind
+        self.textDrawable = BindableStyledText(text: textBind, style: style.projectedValue)
         self.state = .normal
-        self.style = style
-        self.textDrawable = BindableStyledText(text: text, style: style)
-        self.text = text
+        
     }
     
     func update(with cause: UpdateCause, in drawBounds: GlobalDrawBounds) -> RequiresRedraw {
@@ -55,9 +57,6 @@ class BindableButton: BoundDrawable {
         if state == .pressed, case let .mouse(.leftButtonUp(x, y,_,_,_)) = cause {
             if drawBounds.contains(x: x,y: y) {
                 state = .hovered
-                
-                text = "\(Int.random(in: 1..<1000))"
-                
             } else {
                 state = .normal
             }
@@ -68,30 +67,8 @@ class BindableButton: BoundDrawable {
         return textDrawable.update(with: cause, in: drawBounds)
     }
     
-    func draw(with screenWriter: ScreenWriter, in drawBounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
-        
-        //TODO: We need to be able to set the text align for the text for this to work properly
+    func draw(with screenWriter: BoundScreenWriter, in drawBounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         return textDrawable.draw(with: screenWriter, in: drawBounds, force: forced)
-        
-        /*
-        if  !forced, needsRedraw == .no {
-            return .skippedDraw
-        }
-        
-        let style = BindableButton.getStyleFrom(state: state)
-        
-        let print = text.horizontalCenterPadFit(with: " ", toFit: drawBounds.width, ellipsis: true)
-            .verticalCenterPadFit(with: " ", repeated: drawBounds.width, toFit: drawBounds.height)
-            .with(style: style)
-            .escapedString()
-        
-        screenWriter.print(print, column: drawBounds.column, row: drawBounds.row)
-        
-        needsRedraw = .no
-        
-        return .drew
-         */
-        
     }
     
     private static func getStyleFrom(state: MouseState ) -> TextStyle {

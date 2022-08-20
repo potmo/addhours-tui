@@ -38,6 +38,7 @@ enum Mouse: Equatable {
 enum Window: Equatable {
     case focusIn
     case focusOut
+    case sizeChange(width: Int, height: Int)
 }
 
 enum Meta:Equatable {
@@ -138,7 +139,7 @@ enum KeyCode: Equatable, CustomStringConvertible {
     
 }
 
-struct Modifiers: OptionSet, Equatable {
+struct Modifiers: OptionSet, Equatable, CustomStringConvertible {
     let rawValue: Int
     
     static let shift = Modifiers(rawValue: 1 << 0)
@@ -149,6 +150,24 @@ struct Modifiers: OptionSet, Equatable {
     static let meta = Modifiers(rawValue: 1 << 5)
     static let capsLock = Modifiers(rawValue: 1 << 6)
     static let numLock = Modifiers(rawValue: 1 << 7)
+    
+    var description: String {
+        return [
+            self.contains(.shift) ? KeyCode.FunctionKey.shift.rawValue : nil,
+            self.contains(.alt) ? KeyCode.FunctionKey.alt.rawValue : nil,
+            self.contains(.ctrl) ? KeyCode.FunctionKey.control.rawValue : nil,
+            self.contains(.super) ? "s" : nil,
+            self.contains(.hyper) ? "h" : nil,
+            self.contains(.meta) ? "m" : nil,
+            self.contains(.capsLock) ? KeyCode.FunctionKey.capsLock.rawValue : nil,
+            self.contains(.numLock) ? "n" : nil
+        ]
+            .compactMap{$0}
+            .map(String.init)
+            .joined(separator: "")
+        
+        
+    }
 }
 
 enum Key: Equatable {

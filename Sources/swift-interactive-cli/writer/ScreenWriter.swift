@@ -35,23 +35,35 @@ class BoundScreenWriter {
     }
     
     func moveUp( by rows: Int = 1) {
+        guard rows != 0 else {
+            return
+        }
         cursor.row -= rows
         writer.moveCursorUp(by: rows)
     }
     
     func moveDown( by rows: Int = 1) {
+        guard rows != 0 else {
+            return
+        }
         cursor.row += rows
         writer.moveCursorDown(by: rows)
     }
     
     func moveLeft( by columns: Int = 1) {
+        guard columns != 0 else {
+            return
+        }
         cursor.column -= columns
         writer.moveCursorLeft(by: columns)
     }
     
     func moveRight( by columns: Int = 1) {
+        guard columns != 0 else {
+            return
+        }
         cursor.column += columns
-        writer.moveCursorLeft(by: columns)
+        writer.moveCursorRight(by: columns)
     }
     
     func print(_ string:String, column: Int, row: Int) {
@@ -62,12 +74,8 @@ class BoundScreenWriter {
     }
     
     func print(_ string:String, with style: TextStyle, column: Int, row: Int) {
-        
         runWithinStyledBlock(with: style){
-            string.lines.enumerated().forEach{
-                moveTo(column, row + Int($0.offset))
-                printLineAtCursor(String($0.element))
-            }
+            print(string, column: column, row: row)
         }
     }
     
@@ -77,47 +85,57 @@ class BoundScreenWriter {
         // check if trying to write above bounds
         if cursor.row < writeBounds.row {
             moveRight(by: croppedString.count)
+            //log.log("fully above")
             return
         }
         
         // check if trying to write below bounds
-        if (cursor.row > writeBounds.row + writeBounds.height) {
+        if (cursor.row >= writeBounds.row + writeBounds.height) {
             moveRight(by: croppedString.count)
+            //log.log("fully below")
             return
         }
         
         //check if fully to the left outside bounds
         if cursor.column + croppedString.count < writeBounds.column {
             moveRight(by: croppedString.count)
+            //log.log("fully left")
             return
         }
         
         //check if fully to the right outside bounds
         if cursor.column > writeBounds.column + writeBounds.width {
             moveRight(by: croppedString.count)
+            //log.log("fully right")
             return
         }
         
+        var horizontalSkipBefore = 0
+        var horizontalSkipAfter = 0
+        
         // check if partially to the left outside bounds
         if cursor.column < writeBounds.column {
-            let horizontalSkip = writeBounds.column - cursor.column
             
-            // truncate string
+            let horizontalSkip = writeBounds.column - cursor.column
             let horizontalSkipIndex = croppedString.index(croppedString.startIndex, offsetBy: horizontalSkip)
             croppedString = String(croppedString.suffix(from: horizontalSkipIndex))
-            moveRight(by: horizontalSkip)
+            horizontalSkipBefore = horizontalSkip
+            //log.log("partially left: \(horizontalSkip)")
         }
+        
+        moveRight(by: horizontalSkipBefore)
         
         // check if partially to the right outside bounds
         if cursor.column + croppedString.count > writeBounds.column + writeBounds.width {
-            let stringMaxLength = (cursor.column + croppedString.count) - (writeBounds.column + writeBounds.width)
+            let stringMaxLength = (writeBounds.column + writeBounds.width) - cursor.column
             let horizontalSkip = croppedString.count - stringMaxLength
             croppedString = String(croppedString.prefix(stringMaxLength))
-            moveRight(by: horizontalSkip)
+            horizontalSkipAfter = horizontalSkip
         }
         
         cursor.column += croppedString.count
         printRawLine(croppedString)
+        moveRight(by: horizontalSkipAfter)
         
     }
     

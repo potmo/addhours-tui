@@ -16,12 +16,12 @@ class HSplit: BoundDrawable {
         leftRatio = ratio
     }
     
-    func draw(with screenWriter: ScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
+    func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
         let (leftBounds, rightBounds) = getChildDrawBounds(given: bounds)
         
-        let leftDrew = leftChild.draw(with: screenWriter, in: leftBounds, force: forced)
-        let rightDrew = rightChild.draw(with: screenWriter, in: rightBounds, force: forced)
+        let leftDrew = leftChild.draw(with: screenWriter.bound(to: leftBounds), in: leftBounds, force: forced)
+        let rightDrew = rightChild.draw(with: screenWriter.bound(to: rightBounds), in: rightBounds, force: forced)
         
         if leftDrew == .drew || rightDrew == .drew {
             return .drew

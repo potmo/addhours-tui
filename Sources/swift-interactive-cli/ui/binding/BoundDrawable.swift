@@ -1,8 +1,8 @@
 import Foundation
 
-protocol BoundDrawable {
+protocol BoundDrawable: AnyObject {
     
-    func draw(with screenWriter: ScreenWriter,
+    func draw(with screenWriter: BoundScreenWriter,
              in bounds: GlobalDrawBounds,
               force forced: Bool) -> DidRedraw
     

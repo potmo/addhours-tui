@@ -13,7 +13,13 @@ class BindableVStack: BoundDrawable {
         self.lastDrawBounds = []
     }
     
-    func draw(with screenWriter: ScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
+    @discardableResult
+    func addChild(_ child: BoundDrawable)->Self {
+        children.insert(child, at: 0)
+        return self
+    }
+    
+    func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
         var childRedrew = false
         var forceRest = false
@@ -27,12 +33,12 @@ class BindableVStack: BoundDrawable {
         
         for (drawBounds, child) in childDrawBounds {
             
-            let redraw = child.draw(with: screenWriter,
+            let redraw = child.draw(with: screenWriter.bound(to: drawBounds),
                                     in: drawBounds,
                                     force: forced || forceRest)
             switch redraw {
                 case .skippedDraw:
-                    break
+                    continue
                 case .drew:
                     childRedrew = true
                     forceRest = true
@@ -41,7 +47,15 @@ class BindableVStack: BoundDrawable {
         
         if forceRest {
             let usedBounds = getDrawBounds(given: bounds, with: Arrange(.fill, .alignStart))
-            screenWriter.fill(bounds: bounds, with: "/", excluding: usedBounds)
+            //TODO: Implement fill
+            //screenWriter.fill(bounds: bounds, with: "/", excluding: usedBounds)
+            
+            let backgroundLine = Array(repeating: "/", count: bounds.width).joined()
+            
+            for row in usedBounds.row + usedBounds.height ..< bounds.row + bounds.height {
+                screenWriter.moveTo(bounds.column, row)
+                screenWriter.printLineAtCursor(backgroundLine)
+            }
         }
         
         // TOOD: Background

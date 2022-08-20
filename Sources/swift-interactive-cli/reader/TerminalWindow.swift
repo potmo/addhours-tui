@@ -3,7 +3,7 @@ import Signals
 
 class TerminalWindow {
     
-    let sizeChanges = Signal<(Int, Int)>()
+    public let commands = Signal<Window>()
     fileprivate var _width: Int = 0
     fileprivate var _height: Int = 0
     var width: Int {
@@ -27,7 +27,7 @@ class TerminalWindow {
             let windowHeight = Int(size.ws_row)
             self._width = windowWidth
             self._height = windowHeight
-            self.sizeChanges.fire((windowWidth, windowHeight))
+            self.commands.fire(.sizeChange(width: windowWidth, height: windowHeight))
         }
         
         
@@ -46,7 +46,7 @@ class TerminalWindow {
                 let windowHeight = Int(size.ws_row)
                 self._width = windowWidth
                 self._height = windowHeight
-                self.sizeChanges.fire((windowWidth, windowHeight))
+                self.commands.fire(.sizeChange(width: windowWidth, height: windowHeight))
             }
         }
         
@@ -62,7 +62,6 @@ class TerminalWindow {
     func clearScreen() {
         writer.clearScreen()
     }
-    
     
     func clearFromCursorToEndOfScreen() {
         writer.clearFromCursorToEndOfScreen()
@@ -83,7 +82,6 @@ class TerminalWindow {
     func clearEntireLine() {
         writer.clearEntireLine()
     }
-    
     
     func enterAlternativeScreenMode() {
         writer.enterAlternativeScreenMode()

@@ -77,6 +77,16 @@ class TerminalWriter {
         printEscaped("[?7h")
     }
     
+    // support for this can be checked with "CSI ? 2026 $ p"
+    // CSI ? 2026 ; 0 $ y means not supported (0 = not recignized, 1 = set, 2 = reset, 3 = permanently set, 4 = permanently reset)
+    func beginSynchronizedOutput() {
+        printEscaped("[?2026h")
+    }
+    
+    func endSynchronizedOutput() {
+        printEscaped("[?2026l")
+    }
+    
     func enterAllowOtherKeysMode() {
         printEscaped("[>4;2m", flush: false)
     }

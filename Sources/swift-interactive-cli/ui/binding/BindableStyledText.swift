@@ -2,7 +2,7 @@ import Foundation
 
 import Foundation
 
-class BindableStyledText: BoundDrawable {
+class BindableStyledText: BoundDrawable, CustomStringConvertible {
     
     fileprivate let text: Binding<String>
     fileprivate var needsRedraw: RequiresRedraw
@@ -48,7 +48,7 @@ class BindableStyledText: BoundDrawable {
     }
 
     
-    func draw(with screenWriter: ScreenWriter, in drawBounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
+    func draw(with screenWriter: BoundScreenWriter, in drawBounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
         if case (.no, false) = (needsRedraw, forced) {
             return .skippedDraw
@@ -74,9 +74,10 @@ class BindableStyledText: BoundDrawable {
                 appearence = appearence.topPadFit(with: " ", repeated: drawBounds.width, toFit: drawBounds.height)
         }
             
-        appearence = appearence.with(style: style.projectedValue).escapedString()
-        
-        screenWriter.print(appearence, column: drawBounds.column, row: drawBounds.row)
+        screenWriter.print(appearence,
+                           with: style.projectedValue,
+                           column: drawBounds.column,
+                           row: drawBounds.row)
         
         needsRedraw = .no
         
@@ -100,6 +101,10 @@ class BindableStyledText: BoundDrawable {
     func getMinimumSize() -> DrawSize {
         return DrawSize(width: text.projectedValue.lines.map{$0.count}.max() ?? 0,
                         height: text.projectedValue.lines.count)
+    }
+    
+    var description: String {
+        return "Text[\(text.projectedValue)]"
     }
     
 }

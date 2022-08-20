@@ -12,7 +12,7 @@ class BindableBase: BoundDrawable {
         self.childContainter = BindableVStack(closure)
     }
     
-    func draw(with screenWriter: ScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
+    func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         return childContainter.draw(with: screenWriter, in: bounds, force: forced)
     }
     

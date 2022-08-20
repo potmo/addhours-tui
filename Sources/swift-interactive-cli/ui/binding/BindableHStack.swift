@@ -10,7 +10,7 @@ class BindableHStack: BoundDrawable {
         self.lastDrawBounds = []
     }
     
-    func draw(with screenWriter: ScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
+    func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
         var childRedrew = false
         var forceRest = false
@@ -24,12 +24,12 @@ class BindableHStack: BoundDrawable {
         
         for (drawBounds, child) in childDrawBounds {
             
-            let redraw = child.draw(with: screenWriter,
+            let redraw = child.draw(with: screenWriter.bound(to: drawBounds),
                                     in: drawBounds,
                                     force: forced || forceRest)
             switch redraw {
                 case .skippedDraw:
-                    break
+                    continue
                 case .drew:
                     childRedrew = true
                     forceRest = true
@@ -38,7 +38,8 @@ class BindableHStack: BoundDrawable {
         
         if forceRest {
             let usedBounds = getDrawBounds(given: bounds, with: Arrange(.alignStart, .fill))
-            screenWriter.fill(bounds: bounds, with: "/", excluding: usedBounds)
+            //TODO: implement fill
+            //screenWriter.fill(bounds: bounds, with: "/", excluding: usedBounds)
         }
         
         return childRedrew ? .drew : .skippedDraw

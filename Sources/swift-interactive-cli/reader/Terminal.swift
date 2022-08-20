@@ -19,7 +19,9 @@ class Terminal {
     let writer: TerminalWriter
     let mouse: TerminalMouse
     let keyboard: TerminalKeyboard
+    let meta: TerminalMeta
     let screenWriter: ScreenWriter
+    
     
     private func start() {
         window.enterAlternativeScreenMode()
@@ -64,6 +66,7 @@ class Terminal {
         cursor = TerminalCursor(writer: writer)
         mouse = TerminalMouse(writer: writer)
         keyboard = TerminalKeyboard()
+        meta = TerminalMeta()
         
         // Spin up a thread reading from standard in
         DispatchQueue.global(qos: .userInteractive).async {
@@ -77,11 +80,10 @@ class Terminal {
                         self.cursor.commands.fire(cursor)
                     case .key(let key):
                         self.keyboard.commands.fire(key)
-                    case .window(_):
-                    //TODO: implement
-                        continue
-                    case .meta(_):
-                        //TODO: implement
+                    case .window(let window):
+                        self.window.commands.fire(window)
+                    case .meta(let meta):
+                        self.meta.commands.fire(meta)
                         continue
                 }
             }

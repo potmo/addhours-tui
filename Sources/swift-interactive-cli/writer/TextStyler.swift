@@ -155,6 +155,23 @@ enum Color: Equatable {
     case ansi(_:ANSIColor)
     case rgb(r: UInt8, g: UInt8, b: UInt8)
     case none
+        
+    static var black: Color { .ansi(.black)}
+    static var red: Color { .ansi(.red)}
+    static var green: Color { .ansi(.green)}
+    static var yellow: Color { .ansi(.yellow)}
+    static var blue: Color { .ansi(.blue)}
+    static var magenta: Color { .ansi(.magenta)}
+    static var cyan: Color { .ansi(.cyan)}
+    static var white: Color { .ansi(.white)}
+    static var brightBlack: Color { .ansi(.brightBlack)}
+    static var brightRed: Color { .ansi(.brightRed)}
+    static var brightGreen: Color { .ansi(.brightGreen)}
+    static var brightYellow: Color { .ansi(.brightYellow)}
+    static var brightBlue: Color { .ansi(.brightBlue)}
+    static var brightMagenta: Color { .ansi(.brightMagenta)}
+    static var brightCyan: Color { .ansi(.brightCyan)}
+    static var brightWhite: Color { .ansi(.brightWhite)}
 }
 
 enum ANSIColor: Int, Equatable {
@@ -166,7 +183,6 @@ enum ANSIColor: Int, Equatable {
     case magenta = 5
     case cyan = 6
     case white = 7
-    
     case brightBlack = 8
     case brightRed = 9
     case brightGreen = 10
@@ -345,6 +361,10 @@ struct TextStyle: Equatable {
     
     static func backgroundColor( _ backgroundColor: Color) -> TextStyle {
         return TextStyle().backgroundColor(backgroundColor)
+    }
+    
+    static func bold(_ bold: Bool = true) -> TextStyle {
+        return TextStyle().bold(bold)
     }
 }
 

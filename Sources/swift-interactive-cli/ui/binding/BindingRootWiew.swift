@@ -14,7 +14,7 @@ class BindingRootView {
     
     func update(with cause: UpdateCause, forceDraw: Bool = false) {
         
-        let bounds = GlobalDrawBounds(column: 1, row: 1, width: window.width, height: window.height-8)
+        let bounds = GlobalDrawBounds(column: 1, row: 1, width: window.width, height: window.height)
         
         var redraw = child.update(with: cause, in: bounds)
         if forceDraw {
@@ -37,11 +37,12 @@ class BindingRootView {
                 writer.showCursor()
                 writer.restoreCursorPosition()
                 writer.endSynchronizedOutput()
+                writer.flushBuffer()
             case .no:
                 break
         }
         
-        writer.flushBuffer()
+       
         
     }
     

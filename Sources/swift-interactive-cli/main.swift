@@ -4,6 +4,14 @@ let terminal = Terminal()
 let viewForLog = Log()
 let log: Logger = viewForLog
 
+func fatalError(_ message: String, file: String = #file, line: Int = #line) -> Never {
+    print(message)
+    print("in: \(file) line: \(line)")
+    
+    Thread.callStackSymbols.forEach{print($0)}
+    Swift.fatalError()
+}
+
 let rootView = BindingRootView(window: terminal.window, writer: terminal.writer) {
     HSplit(ratio: 0.5,
            left: {
@@ -14,14 +22,45 @@ let rootView = BindingRootView(window: terminal.window, writer: terminal.writer)
                 BoundEscaper()
                 BindableStyledText(text: "RIGHT-----------------")
             }
-            ScrollList{
-                BindableButton(text: "Hello here")
-                for i in 1 ... 20 {
-                    BindableStyledText(text: "       \nitem \(i)\n         ",
-                                       style: .backgroundColor(i % 2 == 0 ? .ansi(.brightBlack) : .ansi(.brightMagenta)))
+            
+            ScrollList {
+                for i in 1..<10 {
+                    Expandable(title: "Number \(i)") {
+                        for j in 1..<10 {
+                            BindableStyledText(text: "item \(j)", style: .backgroundColor(.ansi(.white)).color(.black))
+                        }
+                    }
                 }
-                BindableButton(text: "Hello there")
             }
+            
+            /*
+            Tree(children: [
+                TreeElement(title: BindableStyledText(text: "One\nDOuble"), children: [
+                    TreeElement(drawable: BindableStyledText(text: "One - One")),
+                    TreeElement(drawable: BindableStyledText(text: "One - Two")),
+                    TreeElement(drawable: BindableStyledText(text: "One - Three")),
+                    TreeElement(drawable: BindableStyledText(text: "One - Four")),
+                ]),
+                TreeElement(title: BindableStyledText(text: "Two"), children: [
+                    TreeElement(drawable: BindableStyledText(text: "Two - One")),
+                    TreeElement(drawable: BindableStyledText(text: "Two - Two")),
+                    TreeElement(drawable: BindableStyledText(text: "Two - Three")),
+                    TreeElement(drawable: BindableStyledText(text: "Two - Four")),
+                ]),
+                TreeElement(title: BindableStyledText(text: "Three"), children: [
+                    TreeElement(drawable: BindableStyledText(text: "Three - One")),
+                    TreeElement(title: BindableStyledText(text: "Three - Two"), children: [
+                        TreeElement(drawable: BindableStyledText(text: "Three - Two - One")),
+                        TreeElement(drawable: BindableStyledText(text: "Three - Two - Two")),
+                        TreeElement(drawable: BindableStyledText(text: "Three - Two - Three")),
+                    ]),
+                    TreeElement(drawable: BindableStyledText(text: "Three - Three")),
+                ])
+            ] +
+                 
+                 Array(1..<10).map{ i in TreeElement(drawable: BindableStyledText(text: "filler \(i)", style: .backgroundColor(.ansi(.red))))}
+            )
+             */
         }
     },
            right: {

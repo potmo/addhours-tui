@@ -15,6 +15,11 @@ class ScrollList: BoundDrawable {
         self.lastDrawBounds = []
     }
     
+    func setChildren(children: [BoundDrawable]) {
+        self.children = children
+    }
+
+    
     @discardableResult
     func addChild(_ child: BoundDrawable, at index: Int)->Self {
         //TODO: Maybe if a new element is added above the scroll window we should scroll to compensate
@@ -64,6 +69,7 @@ class ScrollList: BoundDrawable {
             let redraw = child.draw(with: screenWriter.bound(to: bounds),
                                     in: drawBounds,
                                     force: forced || forceRest)
+            
             switch redraw {
                 case .skippedDraw:
                     continue
@@ -72,6 +78,9 @@ class ScrollList: BoundDrawable {
                     forceRest = true
             }
         }
+        
+        
+        
         
         if forceRest {
             let startBackgroundRow: Int
@@ -92,19 +101,21 @@ class ScrollList: BoundDrawable {
             
             let scrollThumbPosition = bounds.row +  1 + Int((Double(bounds.height - 3) * scrollPosition / maxScrollPosition).rounded(.towardZero))
             
-            // draw thumbnail
-            //TODO: make scrollthumb draggable and clickable
-            screenWriter.print("▴", column: bounds.column + bounds.width - 1, row: bounds.row)
-            for row in bounds.row + 1 ..< bounds.row + bounds.height - 1 {
-                if row == scrollThumbPosition {
-                    screenWriter.print("▤", column: bounds.column + bounds.width - 1, row: row)
+            // draw thumbnail. If the height is less than 3 then the scrollbar doesnt fit so then we skip writing it
+            if bounds.height >= 3 {
+                //TODO: make scrollthumb draggable and clickable
+                screenWriter.print("▴", column: bounds.column + bounds.width - 1, row: bounds.row)
+                for row in bounds.row + 1 ..< bounds.row + bounds.height - 1 {
+                    if row == scrollThumbPosition {
+                        screenWriter.print("▤", column: bounds.column + bounds.width - 1, row: row)
+                    }
+                    else {
+                        screenWriter.print("░", column: bounds.column + bounds.width - 1, row: row)
+                    }
+                    
                 }
-                else {
-                    screenWriter.print("░", column: bounds.column + bounds.width - 1, row: row)
-                }
-                
+                screenWriter.print("▾", column: bounds.column + bounds.width - 1, row: bounds.row + bounds.height - 1)
             }
-            screenWriter.print("▾", column: bounds.column + bounds.width - 1, row: bounds.row + bounds.height - 1)
              
         }
         
@@ -137,6 +148,7 @@ class ScrollList: BoundDrawable {
     func scroll(to row: Int, in bounds: GlobalDrawBounds) {
         let maxValue = getScrollMaxValue(in: bounds)
         let newOffset = min(maxValue, max(0, row))
+        let oldValue = scroll
         if newOffset == maxValue {
             scroll = .bottom
         } else if newOffset == 0 {
@@ -145,14 +157,23 @@ class ScrollList: BoundDrawable {
             scroll = .offset(newOffset)
         }
         
-        needsRedraw = .yes
+        if oldValue != scroll {
+            needsRedraw = .yes
+        }
+        
     }
     func scrollToBottom() {
+        guard scroll != .bottom else {
+            return
+        }
         scroll = .bottom
         needsRedraw = .yes
     }
     
     func scrollToTop() {
+        guard scroll != .top else {
+            return
+        }
         scroll = .top
         needsRedraw = .yes
     }
@@ -224,7 +245,7 @@ class ScrollList: BoundDrawable {
     }
     
     
-    enum Scroll {
+    enum Scroll: Equatable {
         case bottom
         case top
         case offset(_:Int)

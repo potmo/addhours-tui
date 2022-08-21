@@ -24,17 +24,19 @@ class BoundScreenWriter {
     
     func bound(to drawBounds: GlobalDrawBounds) -> BoundScreenWriter {
         return BoundScreenWriter(writer: writer,
-                                 writeBounds: drawBounds,
+                                 writeBounds: drawBounds.clamped(to: writeBounds),
                                  cursor: cursor)
     }
     
     func moveTo(_ column: Int, _ row: Int) {
+        guard !writeBounds.isEmpty else { return }
         cursor.column = column
         cursor.row = row
         writer.moveCursorTo(column: cursor.column, row: cursor.row)
     }
     
     func moveUp( by rows: Int = 1) {
+        guard !writeBounds.isEmpty else { return }
         guard rows != 0 else {
             return
         }
@@ -43,6 +45,7 @@ class BoundScreenWriter {
     }
     
     func moveDown( by rows: Int = 1) {
+        guard !writeBounds.isEmpty else { return }
         guard rows != 0 else {
             return
         }
@@ -51,6 +54,7 @@ class BoundScreenWriter {
     }
     
     func moveLeft( by columns: Int = 1) {
+        guard !writeBounds.isEmpty else { return }
         guard columns != 0 else {
             return
         }
@@ -59,6 +63,7 @@ class BoundScreenWriter {
     }
     
     func moveRight( by columns: Int = 1) {
+        guard !writeBounds.isEmpty else { return }
         guard columns != 0 else {
             return
         }
@@ -67,6 +72,7 @@ class BoundScreenWriter {
     }
     
     func print(_ string:String, column: Int, row: Int) {
+        guard !writeBounds.isEmpty else { return }
         string.lines.enumerated().forEach{
             moveTo(column, row + Int($0.offset))
             printLineAtCursor(String($0.element))
@@ -74,39 +80,41 @@ class BoundScreenWriter {
     }
     
     func print(_ string:String, with style: TextStyle, column: Int, row: Int) {
+        guard !writeBounds.isEmpty else { return }
         runWithinStyledBlock(with: style){
             print(string, column: column, row: row)
         }
     }
     
     func printLineAtCursor(_ string: String) {
+        guard !writeBounds.isEmpty else { return }
         var croppedString = string
         
         // check if trying to write above bounds
         if cursor.row < writeBounds.row {
             moveRight(by: croppedString.count)
-            //log.log("fully above")
+            //log.log("fully above \(croppedString)")
             return
         }
         
         // check if trying to write below bounds
         if (cursor.row >= writeBounds.row + writeBounds.height) {
             moveRight(by: croppedString.count)
-            //log.log("fully below")
+            //log.log("fully below \(croppedString)")
             return
         }
         
         //check if fully to the left outside bounds
         if cursor.column + croppedString.count < writeBounds.column {
             moveRight(by: croppedString.count)
-            //log.log("fully left")
+            //log.log("fully left \(croppedString)")
             return
         }
         
         //check if fully to the right outside bounds
         if cursor.column > writeBounds.column + writeBounds.width {
             moveRight(by: croppedString.count)
-            //log.log("fully right")
+            //log.log("fully right \(croppedString)")
             return
         }
         
@@ -144,6 +152,7 @@ class BoundScreenWriter {
     }
     
     func runWithinStyledBlock(with style: TextStyle, block: ()->Void) {
+        guard !writeBounds.isEmpty else { return }
         printRawLine(style.openingEscapeSequence)
         block()
         printRawLine(style.closingEscapeSequence)

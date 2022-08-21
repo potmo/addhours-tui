@@ -142,6 +142,54 @@ struct GlobalDrawBounds: Equatable {
                                 height: height + rows)
     }
     
+    var isEmpty: Bool {
+        return height <= 0 || width <= 0
+    }
+    
+    func isFullyInside(_ other: GlobalDrawBounds) -> Bool {
+        
+        let verticalRange = other.row...other.row + other.height
+        let horizontalRange = other.column...other.column + other.width
+        // top inside
+        guard verticalRange.contains(self.row) else {
+            return false
+        }
+        
+        guard verticalRange.contains(self.row + self.height) else {
+            return false
+        }
+        
+        guard horizontalRange.contains(self.column) else {
+            return false
+        }
+        
+        guard horizontalRange.contains(self.column + self.width) else {
+            return false
+        }
+        
+        return true
+    }
+    
+    func isFullyOutside(_ other: GlobalDrawBounds) -> Bool {
+        return !self.isFullyInside(other)
+    }
+    
+    func clamped(to other: GlobalDrawBounds) -> GlobalDrawBounds {
+        
+        let horizontalRange = other.column...other.column + other.width
+        let verticalRange = other.row...other.row + other.height
+        
+        let left = self.column.clamped(to: horizontalRange)
+        let right = (self.column + self.width).clamped(to: horizontalRange)
+        let top = self.row.clamped(to: verticalRange)
+        let bottom = (self.row + self.height).clamped(to: verticalRange)
+        
+        return GlobalDrawBounds(column: left,
+                                row: top,
+                                width: right - left,
+                                height: bottom - top)
+    }
+    
     func truncateToSize(size: DrawSize, horizontally horizontalDirective: ArrangeDirective, vertically verticalDirective: ArrangeDirective) -> GlobalDrawBounds {
         
         let xOffset: Int

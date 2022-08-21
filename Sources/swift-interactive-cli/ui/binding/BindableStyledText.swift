@@ -41,6 +41,7 @@ class BindableStyledText: BoundDrawable, CustomStringConvertible {
         self.align = align
     }
     
+    @discardableResult
     func align(_ horizontal: AlignDirective, _ vertical: AlignDirective) -> Self {
         self.align = Align(horizontal, vertical)
         self.needsRedraw = .yes

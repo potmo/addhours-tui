@@ -14,6 +14,7 @@ class BindableButton: BoundDrawable {
     
     @Binding private var text: String
     @State private var style: TextStyle
+    private var pushCallback: (() -> Void)? = nil
     
     init(text: Binding<String>) {
         
@@ -31,7 +32,19 @@ class BindableButton: BoundDrawable {
         self._text = textBind
         self.textDrawable = BindableStyledText(text: textBind, style: style.projectedValue)
         self.state = .normal
-        
+    }
+    
+    @discardableResult
+    func onPush(_ callback: @escaping ()->Void) -> Self {
+        self.pushCallback = callback
+        return self
+    }
+    
+    @discardableResult
+    func align(_ horizontal: AlignDirective, _ vertical: AlignDirective) -> Self {
+        //TODO: This should maybe be some kind of cascading modifier instead
+        textDrawable.align(horizontal, vertical)
+        return self
     }
     
     func update(with cause: UpdateCause, in drawBounds: GlobalDrawBounds) -> RequiresRedraw {
@@ -57,6 +70,7 @@ class BindableButton: BoundDrawable {
         if state == .pressed, case let .mouse(.leftButtonUp(x, y,_,_,_)) = cause {
             if drawBounds.contains(x: x,y: y) {
                 state = .hovered
+                pushCallback?()
             } else {
                 state = .normal
             }

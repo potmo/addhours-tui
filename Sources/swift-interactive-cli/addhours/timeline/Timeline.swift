@@ -12,17 +12,9 @@ struct Task {
     let color: Color
 }
 
-extension Double {
-    func string(maxFrac: Int = 2) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.decimalSeparator = "."
-        formatter.maximumFractionDigits = maxFrac
-        return formatter.string(from: NSNumber(value: self))!
-    }
-}
-
-class Timeline: Drawable {
+class Timeline: BoundDrawable {
+ 
+    
     
     var visibleInterval = DateInterval(start: d("2022-01-01T09:00:00Z"), end: d("2022-01-1T18:00:00Z"))
     
@@ -54,10 +46,12 @@ class Timeline: Drawable {
         Timeslot(id: UUID(), interval: d("2022-01-01T14:00:00Z", "2022-01-01T14:01:00Z"), task: task1),
         Timeslot(id: UUID(), interval: d("2022-01-01T14:01:00Z", "2022-01-01T14:12:00Z"), task: task2),
         Timeslot(id: UUID(), interval: d("2022-01-01T14:12:00Z", "2022-01-01T14:13:00Z"), task: task3),
+        Timeslot(id: UUID(), interval: d("2022-01-01T17:00:00Z", "2022-01-01T18:00:00Z"), task: task3),
     ]
+        
     
     
-    func draw(cause: DrawCause, in bounds: GlobalDrawBounds, with screenWriter: ScreenWriter, horizontally horizontalDirective: ArrangeDirective, vertically verticalDirective: ArrangeDirective) -> DrawSize {
+    func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
             
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .short
@@ -67,7 +61,7 @@ class Timeline: Drawable {
         let endDateString = dateFormatter.string(from: visibleInterval.end)
         
         screenWriter.print(startDateString, column: bounds.column, row: bounds.row)
-        screenWriter.print(endDateString, column: bounds.column + bounds.width - endDateString.count + 1, row: bounds.row)
+        screenWriter.print(endDateString, column: bounds.column + bounds.width - endDateString.count, row: bounds.row)
         
         let fillSlotLength = visibleInterval.duration / Double(bounds.width)
         
@@ -96,6 +90,7 @@ class Timeline: Drawable {
                     return
                 }
                 
+                
                 if slot.interval.intersects(fillInterval) {
                     let intersection = fillInterval.intersection(with: slot.interval)!
                     
@@ -104,7 +99,7 @@ class Timeline: Drawable {
                         return
                     }
                     else if slot.interval.contains(fillInterval.start) {
-                        fillIntervalSlots[cursor.offset].append(.partialStart(slot, 1 - intersection.duration / fillSlotLength))
+                        fillIntervalSlots[cursor.offset].append(.partialStart(slot, intersection.duration / fillSlotLength))
                         return
                     }else {
                         fatalError("the slot interval doesnt seem to be intersecting after all")
@@ -138,7 +133,10 @@ class Timeline: Drawable {
         for fillSlots in fillIntervalSlots {
             
             guard !fillSlots.isEmpty else {
-                screenWriter.printRaw(" ".backgroundColor(background).escapedString())
+                //screenWriter.printRaw(" ".backgroundColor(background).escapedString())
+                screenWriter.runWithinStyledBlock(with: .backgroundColor(background)) {
+                    screenWriter.printLineAtCursor(" ")
+                }
                 continue
             }
             
@@ -169,7 +167,7 @@ class Timeline: Drawable {
                     }
                 case 2:
                     switch (fillSlots[0], fillSlots[1]) {
-                        case (.all(_), .all(_)):
+                        case (.all, .all):
                             fatalError("it seems two tasks will fill the slot and that is impossible")
                         case (.partialStart(let startSlot, let startAmount),
                               .partialEnd(let endSlot, _)):
@@ -205,11 +203,29 @@ class Timeline: Drawable {
                                                           color: firstSlot.task.color,
                                                           background: secondSlot.task.color)
                             
+                        case (.all(let firstSlot), _):
+                            // This might happen when the slot boundry is exactly the same as the task boundry
+                            // making one slot start and the other slot end at the same second
+                            printFractionalBlockCharacter(using: screenWriter,
+                                                          fraction: 1.0,
+                                                          color: firstSlot.task.color,
+                                                          background: firstSlot.task.color)
+                            
+                        case (_, .all(let secondSlot)):
+                            // This might happen when the slot boundry is exactly the same as the task boundry
+                            // making one slot start and the other slot end at the same second
+                            printFractionalBlockCharacter(using: screenWriter,
+                                                          fraction: 1.0,
+                                                          color: secondSlot.task.color,
+                                                          background: secondSlot.task.color)
+                            
                         default:
-                            fatalError("cannot handle these types \(fillSlots)")
+                            fatalError("cannot handle these types: \(fillSlots)")
                     }
                 default:
-                    screenWriter.printRaw("\(fillSlots.count % 10)")
+                    //TODO: Figure out what to do when there are more than two tasks in one slot
+                    //screenWriter.printRaw("\(fillSlots.count % 10)")
+                    screenWriter.printLineAtCursor("\(fillSlots.count % 10)")
             }
             
         }
@@ -217,7 +233,8 @@ class Timeline: Drawable {
         screenWriter.moveTo(bounds.column, bounds.row + 2)
         for cursor in fillIntervalSlots.enumerated() {
             if cursor.offset % 2 == 0 {
-                screenWriter.printRaw("▔")
+                //screenWriter.printRaw("▔")
+                screenWriter.printLineAtCursor("▔")
             }else {
                 screenWriter.moveRight()
             }
@@ -225,18 +242,24 @@ class Timeline: Drawable {
         }
         
         
-        return DrawSize(width: bounds.width, height: 1)
+        //TODO: Implement this
+        return .drew
     }
     
-    func printFractionalBlockCharacter(using screenWriter: ScreenWriter,
+    func printFractionalBlockCharacter(using screenWriter: BoundScreenWriter,
                                        fraction: Double,
                                        color: Color,
                                        background: Color) {
-        let coloredChar = getFractionalBlockCharacter(fraction: fraction)
+        /*let coloredChar =getFractionalBlockCharacter(fraction: fraction)
             .color(color)
             .backgroundColor(background)
             .escapedString()
-        screenWriter.printRaw(coloredChar)
+        screenWriter.printRaw(coloredChar)*/
+        
+        screenWriter.runWithinStyledBlock(with: .color(color).backgroundColor(background)) {
+            let char = getFractionalBlockCharacter(fraction: fraction)
+            screenWriter.printLineAtCursor(char)
+        }
     }
     
     func getFractionalBlockCharacter(fraction: Double) -> String {
@@ -252,15 +275,33 @@ class Timeline: Drawable {
         }
     }
     
-    enum FillAmount{
+    enum FillAmount: CustomStringConvertible{
+        var description: String {
+            switch self {
+                case .all: return ".all"
+                case .partialStart: return ".partialStart"
+                case .partialInside: return ".partialInside"
+                case .partialEnd: return ".partialEnd"
+            }
+        }
+        
         case all(_ slot: Timeslot)
         case partialStart(_ slot: Timeslot, _ amount: Double)
         case partialEnd(_ slot: Timeslot, _ amount: Double)
         case partialInside(_ slot: Timeslot,  _ amount: Double)
     }
+
+    func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
+        //TODO: implement this
+        return .no
+    }
+
+    func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
+        return bounds.truncateToSize(size: DrawSize(width: bounds.width, height: 3), horizontally: .fill, vertically: .alignStart)
+    }
     
     
     func getMinimumSize() -> DrawSize {
-        return DrawSize(width: 100, height: 2)
+        return DrawSize(width: 1, height: 3)
     }
 }

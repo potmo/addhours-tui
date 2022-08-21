@@ -31,7 +31,7 @@ class Terminal {
         writer.disableWraparound()
     }
     
-    func terminate() {
+    func terminate(exit terminate: Bool = true) {
         window.clearScreen()
         mouse.stopListening()
         writer.enableWraparound()
@@ -42,7 +42,9 @@ class Terminal {
         writer.flushBuffer()
         
         
-        exit(0)
+        if terminate {
+            exit(0)
+        }
     }
     
     init() {

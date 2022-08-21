@@ -5,11 +5,12 @@ let viewForLog = Log()
 let log: Logger = viewForLog
 
 func fatalError(_ message: String, file: String = #file, line: Int = #line) -> Never {
+    terminal.terminate(exit: false)
     print(message)
     print("in: \(file) line: \(line)")
     
     Thread.callStackSymbols.forEach{print($0)}
-    Swift.fatalError()
+    exit(1)
 }
 
 let rootView = BindingRootView(window: terminal.window, writer: terminal.writer) {
@@ -33,34 +34,6 @@ let rootView = BindingRootView(window: terminal.window, writer: terminal.writer)
                 }
             }
             
-            /*
-            Tree(children: [
-                TreeElement(title: BindableStyledText(text: "One\nDOuble"), children: [
-                    TreeElement(drawable: BindableStyledText(text: "One - One")),
-                    TreeElement(drawable: BindableStyledText(text: "One - Two")),
-                    TreeElement(drawable: BindableStyledText(text: "One - Three")),
-                    TreeElement(drawable: BindableStyledText(text: "One - Four")),
-                ]),
-                TreeElement(title: BindableStyledText(text: "Two"), children: [
-                    TreeElement(drawable: BindableStyledText(text: "Two - One")),
-                    TreeElement(drawable: BindableStyledText(text: "Two - Two")),
-                    TreeElement(drawable: BindableStyledText(text: "Two - Three")),
-                    TreeElement(drawable: BindableStyledText(text: "Two - Four")),
-                ]),
-                TreeElement(title: BindableStyledText(text: "Three"), children: [
-                    TreeElement(drawable: BindableStyledText(text: "Three - One")),
-                    TreeElement(title: BindableStyledText(text: "Three - Two"), children: [
-                        TreeElement(drawable: BindableStyledText(text: "Three - Two - One")),
-                        TreeElement(drawable: BindableStyledText(text: "Three - Two - Two")),
-                        TreeElement(drawable: BindableStyledText(text: "Three - Two - Three")),
-                    ]),
-                    TreeElement(drawable: BindableStyledText(text: "Three - Three")),
-                ])
-            ] +
-                 
-                 Array(1..<10).map{ i in TreeElement(drawable: BindableStyledText(text: "filler \(i)", style: .backgroundColor(.ansi(.red))))}
-            )
-             */
         }
     },
            right: {
@@ -71,6 +44,7 @@ let rootView = BindingRootView(window: terminal.window, writer: terminal.writer)
                                  [BindableStyledText(text:"7"), BindableStyledText(text: "8"), BindableStyledText(text: "9")],
                                 ])
             TestDynamicText().inVStack()
+            Timeline()
             viewForLog
         }
     }

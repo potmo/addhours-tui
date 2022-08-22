@@ -6,7 +6,7 @@ protocol Logger {
     func error(_ text: String)
 }
 
-class Log: BoundDrawable, Logger {
+class Log: Drawable, Logger {
     
     private let backingView: ScrollList
     
@@ -15,17 +15,17 @@ class Log: BoundDrawable, Logger {
     }
     
     func log(_ text: String) {
-        let text = BindableStyledText(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightBlue)))
+        let text = Text(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightBlue)))
         backingView.addChild(text)
     }
     
     func warning(_ text: String) {
-        let text = BindableStyledText(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightYellow)))
+        let text = Text(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightYellow)))
         backingView.addChild(text)
     }
     
     func error(_ text: String) {
-        let text = BindableStyledText(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightRed)))
+        let text = Text(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightRed)))
         backingView.addChild(text)
     }
     

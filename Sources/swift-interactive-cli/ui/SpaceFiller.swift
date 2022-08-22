@@ -1,6 +1,6 @@
 import Foundation
 
-class SpaceFiller: BoundDrawable {
+class SpaceFiller: Drawable {
     
     private let filler: Character
     private let style: TextStyle

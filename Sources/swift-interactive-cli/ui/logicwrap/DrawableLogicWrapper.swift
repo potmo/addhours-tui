@@ -1,15 +1,15 @@
 import Foundation
 
-class BindableBase: BoundDrawable {
+class DrawableLogicWrapper: Drawable {
     
     private let logic: BindableLogic
-    private let childContainter: BoundDrawable
+    private let childContainter: Drawable
 
     init(with logic: BindableLogic) {
         self.logic = logic
         let children = logic.children
-        let closure: ()->[BoundDrawable] = {children}
-        self.childContainter = BindableVStack(closure)
+        let closure: ()->[Drawable] = {children}
+        self.childContainter = VStack(closure)
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
@@ -31,13 +31,3 @@ class BindableBase: BoundDrawable {
     }
 }
 
-protocol BindableLogic {
-    @BoundDrawableBuilder var children: [BoundDrawable] {get}
-    func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> Void
-}
-
-extension BindableLogic {
-    func inVStack() -> any BoundDrawable {
-        return BindableBase(with: self)
-    }
-}

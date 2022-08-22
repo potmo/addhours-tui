@@ -11,7 +11,6 @@ class Terminal {
     fileprivate let csiuReader: CSIuReader
     fileprivate let escapeReader: EscapeReader
     fileprivate let rawReader: RawReader
-    fileprivate let reader: TerminalReader
     
     let commands = Signal<ReadResult>()
     let window: TerminalWindow
@@ -59,7 +58,6 @@ class Terminal {
                                     csiuReader: csiuReader)
         escapeReader = EscapeReader(brackededReader: brackededReader)
         rawReader = RawReader(escapeReader: escapeReader)
-        reader = TerminalReader()
         writer = TerminalWriter()
         screenWriter = ScreenWriter(writer: writer)
         

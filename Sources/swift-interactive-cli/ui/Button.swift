@@ -3,110 +3,106 @@ import Foundation
 
 extension Button: CustomStringConvertible {
     var description: String {
-        return "Button[\(text)]"
+        return "BindableButton[\(text)]"
     }
 }
 
 class Button: Drawable {
+
+    fileprivate var state: MouseState
+    fileprivate let textDrawable: Text
     
-    fileprivate var state: MouseState = .normal
-    fileprivate var needsRedraw: NeedsRedraw = .yes
+    @Binding private var text: String
+    @State private var style: TextStyle
+    private var pushCallback: (() -> Void)? = nil
     
-    private var text: String
-    
-    init(text: String) {
-        self.text = text
+    init(text: Binding<String>) {
+        
+        let style = State(wrappedValue: Button.getStyleFrom(state: .normal))
+        self.state = .normal
+        self.textDrawable = Text(text: text, style: style.projectedValue).align(.center, .center)
+        self._style = style
+        self._text = text
     }
     
-    func draw(cause: DrawCause, in bounds: GlobalDrawBounds, with screenWriter: ScreenWriter, horizontally horizontalDirective: ArrangeDirective, vertically verticalDirective: ArrangeDirective) -> DrawSize {
-        
-        let computedText = text
-        
-        let textSize = DrawSize(width: computedText.lines.map{$0.count}.max() ?? 0,
-                                height: computedText.lines.count)
-        
-        let drawBounds = bounds.truncateToSize(size: textSize,
-                                               horizontally: horizontalDirective,
-                                               vertically: verticalDirective)
-        let drawSize = DrawSize(width: drawBounds.width, height: drawBounds.height)
-        
+    init(text: String) {
+        let style = State(wrappedValue: Button.getStyleFrom(state: .normal))
+        self._style = style
+        let textBind = Binding(wrappedValue: text)
+        self._text = textBind
+        self.textDrawable = Text(text: textBind, style: style.projectedValue)
+        self.state = .normal
+    }
+    
+    @discardableResult
+    func onPush(_ callback: @escaping ()->Void) -> Self {
+        self.pushCallback = callback
+        return self
+    }
+    
+    @discardableResult
+    func align(_ horizontal: AlignDirective, _ vertical: AlignDirective) -> Self {
+        //TODO: This should maybe be some kind of cascading modifier instead
+        textDrawable.align(horizontal, vertical)
+        return self
+    }
+    
+    func update(with cause: UpdateCause, in drawBounds: GlobalDrawBounds) -> RequiresRedraw {
         
         if state == .normal, case let .mouse(.move(x, y,_,_,_)) = cause {
             if drawBounds.contains(x: x,y: y) {
                 state = .hovered
-                needsRedraw = .yes
             }
         }
         
         if state == .hovered, case let .mouse(.move(x, y,_,_,_)) = cause {
             if !drawBounds.contains(x: x,y: y) {
                 state = .normal
-                needsRedraw = .yes
             }
         }
         
         if state == .hovered, case let .mouse(.leftButtonDown(x, y,_,_,_)) = cause {
             if drawBounds.contains(x: x,y: y) {
                 state = .pressed
-                needsRedraw = .yes
             }
         }
         
         if state == .pressed, case let .mouse(.leftButtonUp(x, y,_,_,_)) = cause {
             if drawBounds.contains(x: x,y: y) {
                 state = .hovered
-                needsRedraw = .yes
-                
-                // TODO: Handle click
-                
-                // since this might have changed the text (and bounds) we will recall draw instead of
-                // redoing all of this
-                return draw(cause: .forced,
-                            in: bounds,
-                            with: screenWriter,
-                            horizontally: horizontalDirective,
-                            vertically: verticalDirective)
-                
+                pushCallback?()
             } else {
                 state = .normal
-                needsRedraw = .yes
             }
         }
         
-        if  cause != .forced, case let .no(cachedSize) = needsRedraw {
-            return cachedSize
-        }
+        style = Button.getStyleFrom(state: state)
         
-        let style: TextStyle
-        
-        switch state {
-            case .normal:
-                style = TextStyle().backgroundColor(.ansi(.blue))
-            case .hovered:
-                style = TextStyle().backgroundColor(.ansi(.brightBlue))
-            case .pressed:
-                style = TextStyle().backgroundColor(.ansi(.brightBlue)).bold()
-        }
-        
-        let print = computedText.horizontalCenterPadFit(with: " ", toFit: drawSize.width, ellipsis: true)
-            .verticalCenterPadFit(with: " ", repeated: drawSize.width, toFit: drawSize.height)
-            .with(style: style)
-            .escapedString()
-        
-        screenWriter.print(print, column: bounds.column, row: bounds.row)
-        
-        needsRedraw = .no(cachedSize: drawSize)
-        
-        return drawSize
-        
+        return textDrawable.update(with: cause, in: drawBounds)
     }
     
-    func mouseMove(column: Int, row: Int) {
-        
+    func draw(with screenWriter: BoundScreenWriter, in drawBounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
+        return textDrawable.draw(with: screenWriter, in: drawBounds, force: forced)
+    }
+    
+    private static func getStyleFrom(state: MouseState ) -> TextStyle {
+        switch state {
+            case .normal:
+                return TextStyle().backgroundColor(.ansi(.blue))
+            case .hovered:
+                return TextStyle().backgroundColor(.ansi(.brightBlue))
+            case .pressed:
+                return TextStyle().backgroundColor(.ansi(.brightBlue)).bold()
+        }
+    }
+    
+    
+    func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
+        return textDrawable.getDrawBounds(given: bounds, with: arrangeDirective)
     }
     
     func getMinimumSize() -> DrawSize {
-        return DrawSize(width: text.lines.map{$0.count}.max() ?? 0, height: text.lines.count)
+        return textDrawable.getMinimumSize()
     }
     
     enum MouseState {

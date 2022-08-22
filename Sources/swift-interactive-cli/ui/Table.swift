@@ -1,115 +1,150 @@
 import Foundation
 
+import Foundation
+
 class Table: Drawable {
+    
+    // TODO: THIS IS NOT REALLY IMPLEMENTED
     fileprivate let headers: [Drawable]
     fileprivate let rows: [[Drawable]]
-    fileprivate let headerMinSizes: [DrawSize]
-    fileprivate let rowMinSizes: [[DrawSize]]
+    fileprivate var childDrawBounds: DrawBounds
     
     init(headers: [Drawable], rows:[[Drawable]]) {
         self.headers = headers
         self.rows = rows
-        self.headerMinSizes = headers.map{$0.getMinimumSize()}
-        self.rowMinSizes = rows.map{row in row.map{$0.getMinimumSize()}}
+        self.childDrawBounds = DrawBounds(headers: [], rows: [])
     }
     
-    func draw(cause: DrawCause,
-              in bounds: GlobalDrawBounds,
-              with screenWriter: ScreenWriter,
-              horizontally horizontalDirective: ArrangeDirective,
-              vertically verticalDirective: ArrangeDirective) -> DrawSize {
+    func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
         // check if we need a redraw
-        let currentMinHeaders = headers.map{$0.getMinimumSize()}
-        let currentMinRows = rows.map{row in row.map{$0.getMinimumSize()}}
-        let childChanged = headerMinSizes != currentMinHeaders || rowMinSizes != currentMinRows
-            
-        let childCause = cause == .forced || childChanged ? .forced : cause
+        let newDrawBounds = createDrawBounds(in: bounds)
+        let childChanged = newDrawBounds != childDrawBounds
+        childDrawBounds = newDrawBounds
         
-        let cells = rows.map{ row in
-            row.map{$0.getMinimumSize()}
-        }
-        
-        let columnWidths = headers.enumerated().map{ headerCursor -> Int in
-            let maxCellWith = cells.map{$0[headerCursor.offset].width}.max() ?? 0
-            return max(maxCellWith, headerCursor.element.getMinimumSize().width)
-        }
-        
-        let headerHight = headers.map{$0.getMinimumSize().height}.max() ?? 0
-        let rowHeights = cells.map { $0.map{$0.height}.max() ?? 0 }
-        
+        let forceRest = forced || childChanged
         
         /*
          TODO: Use a templete like this to draw the lines
-        let template =
-        """
-        ╔═╤╗
-        ║H│║
-        ╠═╪╣
-        ║1│║
-        ╟─┼╢
-        ║2│║
-        ╚═╧╝
-        """
-        */
+         let template =
+         """
+         ╔═╤╗
+         ║H│║
+         ╠═╪╣
+         ║1│║
+         ╟─┼╢
+         ║2│║
+         ╚═╧╝
+         """
+         */
         
-        // Draw the frame
-        // but exit early if nothing changed
-        if childCause == .forced {
+        if forceRest {
+            
+            let headerHeight = childDrawBounds.headers.map(\.drawBound.height).max() ?? 0
+            let columnWidths = childDrawBounds.headers.map(\.drawBound.width)
+            
+            var currentRow = bounds.row
             
             let topLine = "╔" + columnWidths.map{Array(repeating: "═", count: $0).joined()}.joined(separator: "╤") + "╗"
+            screenWriter.print(topLine, column: bounds.column, row: currentRow)
             
-            let singleHeaderLine = "║" + headers
-                .enumerated()
-                .map{Array(repeating: " ", count: columnWidths[$0.offset]).joined()}
-                .joined(separator: "│") + "║"
+            currentRow += 1
             
-            let headerLine = Array(repeating: singleHeaderLine, count: headerHight).joined(separator: "\n")
+            // draw frames around headers
+            for row in currentRow ..< currentRow + headerHeight {
+                screenWriter.moveTo(bounds.column, row)
+                screenWriter.printLineAtCursor("║")
+                for headerWidth in childDrawBounds.headers.map(\.drawBound.width).dropLast() {
+                    screenWriter.moveRight(by: headerWidth)
+                    screenWriter.printLineAtCursor("│")
+                }
+                screenWriter.moveRight(by: childDrawBounds.headers.map(\.drawBound.width).last ?? 0)
+                screenWriter.printLineAtCursor("║")
+            }
+            
+            currentRow += 1
             
             let headerSeparator = "╠" + columnWidths.map{Array(repeating: "═", count: $0).joined()}.joined(separator: "╪") + "╣"
+            screenWriter.moveTo(bounds.column, currentRow)
+            screenWriter.printLineAtCursor(headerSeparator)
             
-            let dataLine = "║" + headers
-                .enumerated()
-                .map{Array(repeating: " ", count: columnWidths[$0.offset]).joined()}
-                .joined(separator: "│") + "║"
+            currentRow += 1
             
-            let dataSeparator = "╟" + columnWidths.map{Array(repeating: "─", count: $0).joined()}.joined(separator: "┼") + "╢"
-            
-            let datas = rows
-                .enumerated()
-                .map{ [Array(repeating: dataLine, count: rowHeights[$0.offset]).joined(separator: "\n")] }
-                .joined(separator: [dataSeparator]).joined(separator: "\n")
-            
+            for cellRowCursor in childDrawBounds.rows.enumerated() {
+                let cellRow = cellRowCursor.element
+                let rowHeight = cellRow.map(\.drawBound.height).max() ?? 0
+                for row in currentRow ..< currentRow + rowHeight {
+                    screenWriter.moveTo(bounds.column, row)
+                    screenWriter.printLineAtCursor("║")
+                    for cellWidth in cellRow.map(\.drawBound.width).dropLast() {
+                        screenWriter.moveRight(by: cellWidth)
+                        screenWriter.printLineAtCursor("│")
+                    }
+                    screenWriter.moveRight(by: cellRow.map(\.drawBound.width).last ?? 0)
+                    screenWriter.printLineAtCursor("║")
+                }
+                
+                currentRow += 1
+                
+                if cellRowCursor.offset < childDrawBounds.rows.count - 1 {
+                    let dataSeparator = "╟" + columnWidths.map{Array(repeating: "─", count: $0).joined()}.joined(separator: "┼") + "╢"
+                    screenWriter.moveTo(bounds.column, currentRow)
+                    screenWriter.printLineAtCursor(dataSeparator)
+                    currentRow += 1
+                }
+
+                
+            }
+
             let bottomLine = "╚" + columnWidths.map{Array(repeating: "═", count: $0).joined()}.joined(separator: "╧") + "╝"
             
-            let table = [topLine, headerLine, headerSeparator, datas, bottomLine].joined(separator: "\n")
-            
-            screenWriter.print(table, column: bounds.column, row: bounds.row)
+            screenWriter.moveTo(bounds.column, currentRow)
+            screenWriter.printLineAtCursor(bottomLine)
         }
         
-        // fill in the actual data
-        var col = bounds.column + 2
-        var row = bounds.row + 1
-        for cursor in headers.enumerated() {
-            let childBounds = GlobalDrawBounds(column: col, row: row, width: columnWidths[cursor.offset], height: headerHight)
-            _ = cursor.element.draw(cause: childCause, in: childBounds, with: screenWriter, horizontally: .alignStart, vertically: .alignEnd)
-            col += childBounds.width + 1
+        
+        let headerDrew = childDrawBounds.headers.map{header in
+            header.drawable.draw(with: screenWriter.bound(to: header.drawBound), in: header.drawBound, force: forceRest)
         }
         
-        row += headerHight + 1
-        
-        for rowCursor in rows.enumerated() {
-            col = bounds.column + 2
-            for columnCursor in rowCursor.element.enumerated() {
-                let childBounds = GlobalDrawBounds(column: col, row: row, width: columnWidths[columnCursor.offset], height: rowHeights[rowCursor.offset])
-                _ = columnCursor.element.draw(cause: childCause, in: childBounds, with: screenWriter, horizontally: .alignStart, vertically: .alignEnd)
-                col += childBounds.width + 1
+        let rowDrew = childDrawBounds.rows.map{row in
+            row.map{ cell in
+                cell.drawable.draw(with: screenWriter.bound(to: cell.drawBound), in: cell.drawBound, force: forceRest)
             }
-            row += rowHeights[rowCursor.offset] + 1
+        }.flatMap{$0}
+        
+        if (headerDrew + rowDrew).contains(.drew) {
+            return .drew
+        } else {
+            return .skippedDraw
+        }
+    }
+    
+    func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
+        
+        childDrawBounds = createDrawBounds(in: bounds)
+        
+        let headerUpdates = childDrawBounds.headers.map{header in
+            header.drawable.update(with: cause, in: header.drawBound)
         }
         
-        let size = getMinimumSize()
-        return size
+        let rowUpdates = childDrawBounds.rows.map{row in
+            row.map{ cell in
+                cell.drawable.update(with: cause, in: cell.drawBound)
+            }
+        }.flatMap{$0}
+        
+        if (headerUpdates + rowUpdates).contains(.yes) {
+            return .yes
+        } else {
+            return .no
+        }
+    }
+    
+    func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
+        return bounds.truncateToSize(size: getMinimumSize(),
+                                     horizontally: arrangeDirective.horizontal,
+                                     vertically: arrangeDirective.vertical)
     }
     
     func getMinimumSize() -> DrawSize {
@@ -132,9 +167,71 @@ class Table: Drawable {
         let rowMinHeight = rows.map{row in
             row.map{ $0.getMinimumSize().height}.max() ?? 0
         }.reduce(0, +)
-
+        
         return DrawSize(width: tableContentMinWidth + horizontalFrameLines,
                         height: headerMinHeight + rowMinHeight + verticalFrameLines)
     }
     
+    func createDrawBounds(in bounds: GlobalDrawBounds) -> DrawBounds {
+        let cells = rows.map{ row in
+            row.map{$0.getMinimumSize()}
+        }
+        
+        let columnWidths = headers.enumerated().map{ headerCursor -> Int in
+            let maxCellWith = cells.map{$0[headerCursor.offset].width}.max() ?? 0
+            return max(maxCellWith, headerCursor.element.getMinimumSize().width)
+        }
+        
+        let headerHight = headers.map{$0.getMinimumSize().height}.max() ?? 0
+        let rowHeights = cells.map { $0.map{$0.height}.max() ?? 0 }
+        
+        var headerDrawBounds: [DrawBound] = []
+        var rowDrawBounds: [[DrawBound]] = []
+        
+        var col = bounds.column + 1
+        var row = bounds.row + 1
+        for cursor in headers.enumerated() {
+            let childBounds = GlobalDrawBounds(column: col, row: row, width: columnWidths[cursor.offset], height: headerHight)
+            
+            headerDrawBounds.append(DrawBound(drawable: cursor.element, drawBound: childBounds))
+            
+            col += childBounds.width + 1
+        }
+        
+        row += headerHight + 1
+        
+        for rowCursor in rows.enumerated() {
+            col = bounds.column + 1
+            rowDrawBounds.append([])
+            for columnCursor in rowCursor.element.enumerated() {
+                
+                let childBounds = GlobalDrawBounds(column: col, row: row, width: columnWidths[columnCursor.offset], height: rowHeights[rowCursor.offset])
+                
+                rowDrawBounds[rowCursor.offset].append(DrawBound(drawable: columnCursor.element, drawBound: childBounds))
+                
+                col += childBounds.width + 1
+            }
+            row += rowHeights[rowCursor.offset] + 1
+        }
+        
+        return DrawBounds(headers: headerDrawBounds, rows: rowDrawBounds)
+        
+        
+    }
+    
+    struct DrawBounds: Equatable {
+        let headers: [DrawBound]
+        let rows: [[DrawBound]]
+    }
+    
+    struct DrawBound: Equatable {
+        static func == (lhs: Table.DrawBound, rhs: Table.DrawBound) -> Bool {
+            return lhs.drawBound == rhs.drawBound && lhs.drawable === rhs.drawable
+        }
+        
+        let drawable: Drawable
+        let drawBound: GlobalDrawBounds
+    }
+    
 }
+

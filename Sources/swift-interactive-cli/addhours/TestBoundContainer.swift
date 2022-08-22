@@ -5,11 +5,11 @@ class TestDynamicText: BindableLogic {
     @State var text: String = "Hello"
     @State var buttonText:String = "The Button"
     
-    var children: [BoundDrawable] {
+    var children: [Drawable] {
         
-        BindableButton(text: $buttonText).minSize(minHeight: 3)
+        Button(text: $buttonText).minSize(minHeight: 3)
         
-        BindableStyledText(text: $text, style: .color(.ansi(.red)))
+        Text(text: $text, style: .color(.ansi(.red)))
     }
 
     

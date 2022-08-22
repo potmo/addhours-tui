@@ -1,12 +1,12 @@
 import Foundation
 
-class MinSize: BoundDrawable {
+class MinSize: Drawable {
     
-    private let childContainter: BoundDrawable
+    private let childContainter: Drawable
     private let minWidth: Int?
     private let minHeight: Int?
     
-    init(minWidth: Int? = nil, minHeight: Int? = nil, content: () -> BoundDrawable) {
+    init(minWidth: Int? = nil, minHeight: Int? = nil, content: () -> Drawable) {
         self.minWidth = minWidth
         self.minHeight = minHeight
         self.childContainter = content()

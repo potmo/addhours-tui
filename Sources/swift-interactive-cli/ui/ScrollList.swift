@@ -1,27 +1,27 @@
 import Foundation
 
-class ScrollList: BoundDrawable {
+class ScrollList: Drawable {
     
     
-    private var children: [BoundDrawable]
+    private var children: [Drawable]
     private var needsRedraw: RequiresRedraw
     private var lastDrawBounds: [GlobalDrawBounds]
     private var scroll = Scroll.bottom
     private let SCROLL_BAR_WIDTH = 1
     
-    init(@BoundDrawableBuilder _ content: () -> [BoundDrawable]) {
+    init(@DrawableBuilder _ content: () -> [Drawable]) {
         self.children = content()
         self.needsRedraw = .yes
         self.lastDrawBounds = []
     }
     
-    func setChildren(children: [BoundDrawable]) {
+    func setChildren(children: [Drawable]) {
         self.children = children
     }
 
     
     @discardableResult
-    func addChild(_ child: BoundDrawable, at index: Int)->Self {
+    func addChild(_ child: Drawable, at index: Int)->Self {
         //TODO: Maybe if a new element is added above the scroll window we should scroll to compensate
         children.insert(child, at: index)
         needsRedraw = .yes
@@ -29,7 +29,7 @@ class ScrollList: BoundDrawable {
     }
     
     @discardableResult
-    func addChild(_ child: BoundDrawable)->Self {
+    func addChild(_ child: Drawable)->Self {
         children.append(child)
         needsRedraw = .yes
         return self
@@ -210,8 +210,8 @@ class ScrollList: BoundDrawable {
 
     }
     
-    func getChildDrawBounds(in bounds: GlobalDrawBounds) -> [(GlobalDrawBounds, BoundDrawable)]{
-        var childBounds: [(GlobalDrawBounds, BoundDrawable)] = []
+    func getChildDrawBounds(in bounds: GlobalDrawBounds) -> [(GlobalDrawBounds, Drawable)]{
+        var childBounds: [(GlobalDrawBounds, Drawable)] = []
         
         let scrollOffset = getScrollPosition(in: bounds)
         

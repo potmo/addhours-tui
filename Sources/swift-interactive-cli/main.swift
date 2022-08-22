@@ -13,22 +13,22 @@ func fatalError(_ message: String, file: String = #file, line: Int = #line) -> N
     exit(1)
 }
 
-let rootView = BindingRootView(window: terminal.window, writer: terminal.writer) {
+let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer) {
     HSplit(ratio: 0.5,
            left: {
-        BindableVStack{
-            BindableStyledText(text: "Other side", style: .color(.ansi(.cyan)).backgroundColor(.ansi(.brightBlack)))
-            BindableHStack{
-                BindableStyledText(text: "------------------LEFT")
+        VStack{
+            Text(text: "Other side", style: .color(.ansi(.cyan)).backgroundColor(.ansi(.brightBlack)))
+            HStack{
+                Text(text: "------------------LEFT")
                 BoundEscaper()
-                BindableStyledText(text: "RIGHT-----------------")
+                Text(text: "RIGHT-----------------")
             }
             
             ScrollList {
                 for i in 1..<10 {
                     Expandable(title: "Number \(i)") {
                         for j in 1..<10 {
-                            BindableStyledText(text: "item \(j)", style: .backgroundColor(.ansi(.white)).color(.black))
+                            Text(text: "item \(j)", style: .backgroundColor(.ansi(.white)).color(.black))
                         }
                     }
                 }
@@ -37,11 +37,11 @@ let rootView = BindingRootView(window: terminal.window, writer: terminal.writer)
         }
     },
            right: {
-        BindableVStack{
-            BindableTable(headers: [BindableStyledText(text: "One"), BindableStyledText(text: "Two"), BindableStyledText(text: "Three")],
-                          rows: [[BindableStyledText(text:"1"), BindableStyledText(text: "2"), BindableStyledText(text: "3")],
-                                 [BindableStyledText(text:"4"), BindableStyledText(text: "5"), BindableStyledText(text: "5")],
-                                 [BindableStyledText(text:"7"), BindableStyledText(text: "8"), BindableStyledText(text: "9")],
+        VStack{
+            Table(headers: [Text(text: "One"), Text(text: "Two"), Text(text: "Three")],
+                          rows: [[Text(text:"1"), Text(text: "2"), Text(text: "3")],
+                                 [Text(text:"4"), Text(text: "5"), Text(text: "5")],
+                                 [Text(text:"7"), Text(text: "8"), Text(text: "9")],
                                 ])
             TestDynamicText().inVStack()
             Timeline()

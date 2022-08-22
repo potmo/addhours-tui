@@ -1,15 +1,15 @@
 import Foundation
 
-class Margin:BoundDrawable {
+class Margin:Drawable {
     
     private let left: Int
     private let right: Int
     private let top: Int
     private let bottom: Int
-    private let backingContainer: BindableVStack
+    private let backingContainer: VStack
     
-    init(left: Int = 0, right: Int = 0, top: Int = 0, bottom: Int = 0, @BoundDrawableBuilder _ content: () -> [BoundDrawable]) {
-        self.backingContainer = BindableVStack(content)
+    init(left: Int = 0, right: Int = 0, top: Int = 0, bottom: Int = 0, @DrawableBuilder _ content: () -> [Drawable]) {
+        self.backingContainer = VStack(content)
         self.left = left
         self.right = right
         self.top = top

@@ -1,22 +1,22 @@
 import Foundation
 
-class Expandable: BoundDrawable {
+class Expandable: Drawable {
     
-    private let header: BoundDrawable
-    private let expansion: BoundDrawable
+    private let header: Drawable
+    private let expansion: Drawable
     @State private var buttonText: String
     @State private var expanded: Bool
     private var needsRedraw: RequiresRedraw
     
-    init(title: String, @BoundDrawableBuilder _ content: () -> [BoundDrawable]) {
+    init(title: String, @DrawableBuilder _ content: () -> [Drawable]) {
     
         self.expanded = false
         let buttonText = State(wrappedValue: "▸ \(title)")
         self._buttonText = buttonText
-        let expandButton = BindableButton(text: buttonText.projectedValue)
+        let expandButton = Button(text: buttonText.projectedValue)
         self.header = expandButton
         self.expansion = Margin(left: 1){
-            BindableVStack(content)
+            VStack(content)
         }
         
         needsRedraw = .yes

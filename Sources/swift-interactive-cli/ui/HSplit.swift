@@ -1,18 +1,18 @@
 import Foundation
 
-class HSplit: BoundDrawable {
+class HSplit: Drawable {
     
-    private let leftChild: BindableVStack
-    private let rightChild: BindableVStack
+    private let leftChild: VStack
+    private let rightChild: VStack
     private let leftRatio: Double
 
     
     init(ratio: Double,
-         @BoundDrawableBuilder left leftContent: () -> [BoundDrawable],
-         @BoundDrawableBuilder right rightContent: () -> [BoundDrawable]) {
+         @DrawableBuilder left leftContent: () -> [Drawable],
+         @DrawableBuilder right rightContent: () -> [Drawable]) {
 
-        leftChild = BindableVStack(leftContent)
-        rightChild = BindableVStack(rightContent)
+        leftChild = VStack(leftContent)
+        rightChild = VStack(rightContent)
         leftRatio = ratio
     }
     

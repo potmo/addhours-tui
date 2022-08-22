@@ -1,12 +1,12 @@
 import Foundation
 
-class BindingRootView {
+class TerminalRootView {
     
-    private var child: BoundDrawable
+    private var child: Drawable
     private let window: TerminalWindow
     private let writer: TerminalWriter
     
-    init (window: TerminalWindow, writer: TerminalWriter, rootChildMaker: ()->BoundDrawable) {
+    init (window: TerminalWindow, writer: TerminalWriter, rootChildMaker: ()->Drawable) {
         self.child = rootChildMaker()
         self.window = window
         self.writer = writer

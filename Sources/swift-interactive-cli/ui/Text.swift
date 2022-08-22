@@ -1,8 +1,6 @@
 import Foundation
 
-import Foundation
-
-class BindableStyledText: BoundDrawable, CustomStringConvertible {
+class Text: Drawable, CustomStringConvertible {
     
     fileprivate let text: Binding<String>
     fileprivate var needsRedraw: RequiresRedraw

@@ -12,7 +12,7 @@ struct Task {
     let color: Color
 }
 
-class Timeline: BoundDrawable {
+class Timeline: Drawable {
  
     
     

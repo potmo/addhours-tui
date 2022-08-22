@@ -1,6 +1,6 @@
 import Foundation
 
-class BoundEscaper: BoundDrawable {
+class BoundEscaper: Drawable {
     let string = "helloboys"
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {

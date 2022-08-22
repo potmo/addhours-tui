@@ -1,13 +1,13 @@
 import Foundation
 
-class BindableIf: BoundDrawable {
+class If: Drawable {
     
     private var needsRedraw: RequiresRedraw = .yes
-    private var backingContainer: BindableVStack
+    private var backingContainer: VStack
     @Binding var on: Bool
     
-    init(_ binding: Binding<Bool>, @BoundDrawableBuilder _ content: () -> [BoundDrawable]) {
-        backingContainer = BindableVStack(content)
+    init(_ binding: Binding<Bool>, @DrawableBuilder _ content: () -> [Drawable]) {
+        backingContainer = VStack(content)
         self._on = binding
         self._on.updatedSignal.subscribe(with: self){ _ in
             self.needsRedraw = .yes

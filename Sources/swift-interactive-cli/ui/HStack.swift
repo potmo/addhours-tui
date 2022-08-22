@@ -2,91 +2,106 @@ import Foundation
 
 class HStack: Drawable {
     
-    fileprivate var children: [Child]
-    fileprivate var needsRedraw: NeedsRedraw
+    private var children: [Drawable]
+    private var lastDrawBounds: [GlobalDrawBounds]
     
-    init() {
-        self.children = []
-        self.needsRedraw = .yes
+    init(@DrawableBuilder _ content: () -> [Drawable]) {
+        self.children = content()
+        self.lastDrawBounds = []
     }
     
-    func addChild(child: Drawable) {
-        self.children.append(Child(drawable: child, needsRedraw: .yes))
-        needsRedraw = .yes
+    @discardableResult
+    func addChild(child: Drawable) -> Self {
+        children.append(child)
+        return self
     }
     
-    func addChild(child: Drawable, at index: Int) {
-        children.insert(Child(drawable: child, needsRedraw: .yes), at: index)
-        children = children[index..<children.count].map{ child in
-            child.needsRedraw = .yes
-            return child
+    func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
+        
+        var childRedrew = false
+        var forceRest = false
+        let childDrawBounds = getChildDrawBounds(in: bounds)
+        let currentDrawBounds = childDrawBounds.map(\.0)
+        
+        // if the bounds does not match then that means that we need to redraw all of them
+        if lastDrawBounds != currentDrawBounds {
+            forceRest = true
         }
-        needsRedraw = .yes
-    }
-    
-    func removeChild(at index: Int) {
-        children.remove(at: index)
-        children = children[index..<children.count].map{ child in
-            child.needsRedraw = .yes
-            return child
-        }
-        needsRedraw = .yes
-    }
-    
-    func draw(cause: DrawCause, in bounds: GlobalDrawBounds, with screenWriter: ScreenWriter, horizontally horizontalDirective: ArrangeDirective, vertically verticalDirective: ArrangeDirective) -> DrawSize {
         
-        // we dont care about the directives really. Just draw
-        var currentBounds: GlobalDrawBounds = GlobalDrawBounds(column: bounds.column,
-                                                               row: bounds.row,
-                                                               width: bounds.width,
-                                                               height: getMinimumSize().height)
-        
-        let usedBounds = currentBounds
-        
-        var forceRedrawRest = needsRedraw == .yes || cause == .forced
-        
-        for (index, child) in children.enumerated() {
+        for (drawBounds, child) in childDrawBounds {
             
-            let usedSpace = child.drawable.draw(cause: forceRedrawRest ? .forced : cause,
-                                                in: currentBounds,
-                                                with: screenWriter,
-                                                horizontally: index == children.count - 1 ? .fill : .alignStart,
-                                                vertically: .fill)
-            currentBounds = currentBounds.offset(columns: usedSpace.width, rows: 0)
-                                         .offsetSize(columns: -usedSpace.width, rows: 0)
-            
-            // if the draw does not have the same size as last time (or we have no last time)
-            // we need to force redraw the rest
-            if child.needsRedraw != .no(cachedSize: usedSpace) {
-                child.needsRedraw = .no(cachedSize: usedSpace)
-                forceRedrawRest = true
+            guard !drawBounds.isFullyOutside(bounds) else {
+                continue
             }
             
-            // Stop when we are about to draw out of bounds
-            if (currentBounds.width <= 0) {
-                break
+            let redraw = child.draw(with: screenWriter.bound(to: drawBounds),
+                                    in: drawBounds,
+                                    force: forced || forceRest)
+            switch redraw {
+                case .skippedDraw:
+                    continue
+                case .drew:
+                    childRedrew = true
+                    forceRest = true
             }
         }
         
-        let drawnSize = DrawSize(width: bounds.width, height: usedBounds.height)
-        needsRedraw = .no(cachedSize: drawnSize)
-        return drawnSize
+        if forceRest {
+            //let usedBounds = getDrawBounds(given: bounds, with: Arrange(.alignStart, .fill))
+            //TODO: implement fill
+            //screenWriter.fill(bounds: bounds, with: "/", excluding: usedBounds)
+        }
+        
+        return childRedrew ? .drew : .skippedDraw
+    }
+    
+    func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
+
+        let childDrawBounds = getChildDrawBounds(in: bounds)
+        var childrenNeedsToDraw: RequiresRedraw = .no
+        
+        for (drawBounds, child) in childDrawBounds {
+            if child.update(with: cause, in: drawBounds) == .yes {
+                childrenNeedsToDraw = .yes
+            }
+        }
+        
+        lastDrawBounds = childDrawBounds.map(\.0)
+        
+        return childrenNeedsToDraw
+    }
+    
+    
+    func getChildDrawBounds(in bounds: GlobalDrawBounds) -> [(GlobalDrawBounds, Drawable)]{
+        var childBounds: [(GlobalDrawBounds, Drawable)] = []
+        
+        var availableBounds = bounds
+        for child in children {
+            let drawBounds = child.getDrawBounds(given: availableBounds, with: Arrange(.alignStart, .fill))
+            availableBounds = availableBounds.offsetSize(columns: -drawBounds.width, rows: 0)
+                .offset(columns: drawBounds.width, rows: 0)
+            childBounds.append((drawBounds, child))
+        }
+        
+        return childBounds
+    }
+    
+    func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
+        return bounds.truncateToSize(size: getMinimumSize(),
+                                     horizontally: arrangeDirective.horizontal,
+                                     vertically: arrangeDirective.vertical)
+        
     }
     
     func getMinimumSize() -> DrawSize {
-        let sizes = children.map{$0.drawable}.map{$0.getMinimumSize()}
-        let height = sizes.map{$0.height}.max() ?? 0
-        let width = sizes.map{$0.width}.reduce(0,+)
+        let sizes = children.map{$0.getMinimumSize()}
+        let width = sizes.map(\.width).reduce(0,+)
+        let height = sizes.map(\.height).max() ?? 0
+        
         return DrawSize(width: width, height: height)
     }
     
-    class Child {
-        let drawable: Drawable
-        var needsRedraw: NeedsRedraw
-        
-        init(drawable: Drawable, needsRedraw: NeedsRedraw) {
-            self.drawable = drawable
-            self.needsRedraw = needsRedraw
-        }
-    }
+    
+    
+    
 }

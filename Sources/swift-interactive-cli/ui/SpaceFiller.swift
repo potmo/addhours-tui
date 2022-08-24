@@ -25,6 +25,9 @@ class SpaceFiller: Drawable {
     }
     
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
+        
+        //TODO: If the draw bounds changes we need to redraw
+        
         return .no
     }
     

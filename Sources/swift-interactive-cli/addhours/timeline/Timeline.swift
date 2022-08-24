@@ -13,11 +13,9 @@ struct Task {
 }
 
 class Timeline: Drawable {
- 
-    
     
     var visibleInterval = DateInterval(start: d("2022-01-01T09:00:00Z"), end: d("2022-01-1T18:00:00Z"))
-    
+    var needsRedraw: RequiresRedraw = .yes
     
     fileprivate static func d(_ string: String) -> Date {
         return ISO8601DateFormatter().date(from: string)!
@@ -52,7 +50,10 @@ class Timeline: Drawable {
     
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
-            
+        
+        guard needsRedraw == .yes || forced else {
+            return .skippedDraw
+        }
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .short
         dateFormatter.timeStyle = .short
@@ -250,12 +251,6 @@ class Timeline: Drawable {
                                        fraction: Double,
                                        color: Color,
                                        background: Color) {
-        /*let coloredChar =getFractionalBlockCharacter(fraction: fraction)
-            .color(color)
-            .backgroundColor(background)
-            .escapedString()
-        screenWriter.printRaw(coloredChar)*/
-        
         screenWriter.runWithinStyledBlock(with: .color(color).backgroundColor(background)) {
             let char = getFractionalBlockCharacter(fraction: fraction)
             screenWriter.printLineAtCursor(char)

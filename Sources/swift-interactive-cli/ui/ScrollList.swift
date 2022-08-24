@@ -157,6 +157,8 @@ class ScrollList: Drawable {
             scroll = .offset(newOffset)
         }
         
+        //log.log("scroll: \(scroll) \(Date().timeIntervalSinceReferenceDate)")
+        
         if oldValue != scroll {
             needsRedraw = .yes
         }
@@ -202,7 +204,7 @@ class ScrollList: Drawable {
         
         lastDrawBounds = childDrawBounds.map(\.0)
         
-        if childUpdates.contains(.yes) {
+        if childUpdates.contains(.yes) || needsRedraw == .yes {
             return .yes
         } else {
             return .no

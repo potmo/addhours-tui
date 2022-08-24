@@ -12,7 +12,7 @@ class BoundEscaper: Drawable {
     }
     
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
-        .yes
+        .no
     }
     
     func getMinimumSize() -> DrawSize {

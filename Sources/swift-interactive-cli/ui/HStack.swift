@@ -2,88 +2,117 @@ import Foundation
 
 class HStack: Drawable {
     
-    private var children: [Drawable]
-    private var lastDrawBounds: [GlobalDrawBounds]
+    
+    private var children: [Child]
+    
+    struct Child {
+        let drawable: Drawable
+        let requiresRedraw: RequiresRedraw
+        let drawBounds: GlobalDrawBounds
+        func requiringRedraw(_ requiresRedraw:RequiresRedraw) -> Self {
+            return Child(drawable: drawable, requiresRedraw: requiresRedraw, drawBounds: drawBounds)
+        }
+        
+        func updateDrawBounds(with drawBounds: GlobalDrawBounds) -> Self {
+            return Child(drawable: drawable, requiresRedraw: requiresRedraw, drawBounds: drawBounds)
+        }
+    }
     
     init(@DrawableBuilder _ content: () -> [Drawable]) {
-        self.children = content()
-        self.lastDrawBounds = []
+        self.children = content().map{ drawable in
+            Child(drawable: drawable, requiresRedraw: .yes, drawBounds: GlobalDrawBounds())
+        }
     }
     
     @discardableResult
-    func addChild(child: Drawable) -> Self {
-        children.append(child)
+    func addChild(_ child: Drawable)->Self {
+        children.insert(Child(drawable: child, requiresRedraw: .yes, drawBounds: GlobalDrawBounds()), at: 0)
+        self.childrenRequiresRedraw(after: 0)
         return self
+    }
+    
+    private func childrenRequiresRedraw(after index: Int) {
+        children = children.enumerated().map{ i, child in
+            if i > index {
+                return child.requiringRedraw(.yes)
+            } else {
+                return child
+            }
+        }
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
-        var childRedrew = false
+        children = childrenWithUpdatedDrawBounds(children: children, in: bounds)
+        
         var forceRest = false
-        let childDrawBounds = getChildDrawBounds(in: bounds)
-        let currentDrawBounds = childDrawBounds.map(\.0)
         
-        // if the bounds does not match then that means that we need to redraw all of them
-        if lastDrawBounds != currentDrawBounds {
-            forceRest = true
-        }
-        
-        for (drawBounds, child) in childDrawBounds {
+        let childDraws = children.map{ child -> DidRedraw in
             
-            guard !drawBounds.isFullyOutside(bounds) else {
-                continue
+            if child.requiresRedraw == .no && !forced && !forceRest {
+                return .skippedDraw
             }
             
-            let redraw = child.draw(with: screenWriter.bound(to: drawBounds),
-                                    in: drawBounds,
-                                    force: forced || forceRest)
-            switch redraw {
+            let redrew = child.drawable.draw(with: screenWriter.bound(to: child.drawBounds),
+                                             in: child.drawBounds,
+                                             force: forced || forceRest)
+            switch redrew {
                 case .skippedDraw:
-                    continue
+                    break
                 case .drew:
-                    childRedrew = true
                     forceRest = true
             }
+            
+            return redrew
         }
         
         if forceRest {
-            //let usedBounds = getDrawBounds(given: bounds, with: Arrange(.alignStart, .fill))
-            //TODO: implement fill
-            //screenWriter.fill(bounds: bounds, with: "/", excluding: usedBounds)
-        }
-        
-        return childRedrew ? .drew : .skippedDraw
-    }
-    
-    func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
-
-        let childDrawBounds = getChildDrawBounds(in: bounds)
-        var childrenNeedsToDraw: RequiresRedraw = .no
-        
-        for (drawBounds, child) in childDrawBounds {
-            if child.update(with: cause, in: drawBounds) == .yes {
-                childrenNeedsToDraw = .yes
+            let usedBounds = getDrawBounds(given: bounds, with: Arrange(.alignStart, .fill))
+            let backgroundLine = Array(repeating: "/", count: bounds.width - usedBounds.width).joined()
+            
+            for row in bounds.row ..< bounds.row + bounds.height {
+                screenWriter.moveTo(bounds.column + usedBounds.width, row)
+                screenWriter.printLineAtCursor(backgroundLine)
             }
         }
         
-        lastDrawBounds = childDrawBounds.map(\.0)
-        
-        return childrenNeedsToDraw
+        return childDraws.contains(.drew) ? .drew : .skippedDraw
     }
     
-    
-    func getChildDrawBounds(in bounds: GlobalDrawBounds) -> [(GlobalDrawBounds, Drawable)]{
-        var childBounds: [(GlobalDrawBounds, Drawable)] = []
+    func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
         
-        var availableBounds = bounds
-        for child in children {
-            let drawBounds = child.getDrawBounds(given: availableBounds, with: Arrange(.alignStart, .fill))
-            availableBounds = availableBounds.offsetSize(columns: -drawBounds.width, rows: 0)
-                .offset(columns: drawBounds.width, rows: 0)
-            childBounds.append((drawBounds, child))
+        children = childrenWithUpdatedDrawBounds(children: children, in: bounds)
+        
+        children = children.map { child in
+            if child.drawable.update(with: cause, in: child.drawBounds) == .yes {
+                return child.requiringRedraw(.yes)
+            }else {
+                return child.requiringRedraw(.no)
+            }
         }
         
-        return childBounds
+        return children.map(\.requiresRedraw).contains(.yes) ? .yes : .no
+    }
+    
+    func childrenWithUpdatedDrawBounds(children: [Child], in bounds: GlobalDrawBounds) -> [Child]{
+        
+        var restNeedsToRedraw = false
+        var availableBounds = bounds
+        return children.map{ child in
+            let drawBounds = child.drawable.getDrawBounds(given: availableBounds, with: Arrange(.alignStart, .fill))
+            
+            availableBounds = availableBounds.offsetSize(columns: -drawBounds.width, rows: 0)
+                .offset(columns: drawBounds.width, rows: 0)
+            
+            if restNeedsToRedraw || drawBounds != child.drawBounds {
+                restNeedsToRedraw = true
+                return child.updateDrawBounds(with: drawBounds)
+                    .requiringRedraw(.yes)
+            }
+            
+            return child
+        }
+        
     }
     
     func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
@@ -94,7 +123,7 @@ class HStack: Drawable {
     }
     
     func getMinimumSize() -> DrawSize {
-        let sizes = children.map{$0.getMinimumSize()}
+        let sizes = children.map(\.drawable).map{$0.getMinimumSize()}
         let width = sizes.map(\.width).reduce(0,+)
         let height = sizes.map(\.height).max() ?? 0
         

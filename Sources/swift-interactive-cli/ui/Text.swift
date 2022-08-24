@@ -49,10 +49,6 @@ class Text: Drawable, CustomStringConvertible {
     
     func draw(with screenWriter: BoundScreenWriter, in drawBounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
-        if case (.no, false) = (needsRedraw, forced) {
-            return .skippedDraw
-        }
-        
         var appearence = text.projectedValue
             
         switch align.horizontal {

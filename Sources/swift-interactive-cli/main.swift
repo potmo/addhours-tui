@@ -18,6 +18,7 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
            left: {
         VStack{
             Text(text: "Other side", style: .color(.ansi(.cyan)).backgroundColor(.ansi(.brightBlack)))
+            
             HStack{
                 Text(text: "------------------LEFT")
                 BoundEscaper()
@@ -32,7 +33,18 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
                         }
                     }
                 }
+                
+                Expandable(title: "Number extra") {
+                    for j in 1..<3 {
+                        Expandable(title: "Number extra \(j)") {
+                            for k in 1..<4 {
+                                Text(text: "item \(k)", style: .backgroundColor(.ansi(.white)).color(.black))
+                            }
+                        }
+                    }
+                }
             }
+             
             
         }
     },

@@ -25,6 +25,7 @@ class CSIReader {
             
             switch char {
                     //TODO: We should read the modifier buttons as well
+                    // this can be done by this: https://www.leonerd.org.uk/hacks/fixterms/
                 case "A":
                     return .key(.pressKey(code: .functionKey(.upArrow), modifers: []))
                 case "B":
@@ -33,6 +34,9 @@ class CSIReader {
                     return .key(.pressKey(code: .functionKey(.rightArrow), modifers: []))
                 case "D":
                     return .key(.pressKey(code: .functionKey(.leftArrow), modifers: []))
+                    // case F: END
+                    //case H: Home
+                    //case P,Q,R,S: F1, F2, F3, F4
                 case "M": // mouse up
                     fallthrough
                 case "m": // mouse down

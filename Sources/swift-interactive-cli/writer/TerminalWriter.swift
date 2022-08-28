@@ -87,11 +87,11 @@ class TerminalWriter {
         printEscaped("[?2026l")
     }
     
-    func enterAllowOtherKeysMode() {
+    func enterModifyOtherKeysMode() {
         printEscaped("[>4;2m", flush: false)
     }
     
-    func exitAllowOtherKeysMode() {
+    func exitModifyOtherKeysMode() {
         printEscaped("[>4;0m", flush: false)
     }
     

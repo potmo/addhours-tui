@@ -55,6 +55,7 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
                                  [Text(text:"4"), Text(text: "5"), Text(text: "5")],
                                  [Text(text:"7"), Text(text: "8"), Text(text: "9")],
                                 ])
+            TextInput(text: Binding(wrappedValue: "hello"))
             TestDynamicText().inVStack()
             Timeline()
             viewForLog
@@ -109,10 +110,16 @@ terminal.window.commands.subscribe(with: terminal) { window in
             rootView.update(with: UpdateCause.none, forceDraw: true)
         case .focusIn:
             log.log("window got focus")
+            rootView.update(with: UpdateCause.none, forceDraw: false)
         case .focusOut:
             log.log("window lost focus")
+            rootView.update(with: UpdateCause.none, forceDraw: false)
     }
     
+}
+
+let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
+    rootView.update(with: .tick)
 }
 
 terminal.window.clearScreen()

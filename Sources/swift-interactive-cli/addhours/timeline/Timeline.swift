@@ -61,8 +61,10 @@ class Timeline: Drawable {
         let startDateString = dateFormatter.string(from: visibleInterval.start)
         let endDateString = dateFormatter.string(from: visibleInterval.end)
         
-        screenWriter.print(startDateString, column: bounds.column, row: bounds.row)
-        screenWriter.print(endDateString, column: bounds.column + bounds.width - endDateString.count, row: bounds.row)
+        screenWriter.moveTo(bounds.column, bounds.row)
+        screenWriter.printLineAtCursor(startDateString)
+        screenWriter.printLineAtCursor(Array(repeating: " ", count: bounds.width - startDateString.count - endDateString.count).joined(separator: ""))
+        screenWriter.printLineAtCursor(endDateString)
         
         let fillSlotLength = visibleInterval.duration / Double(bounds.width)
         
@@ -234,10 +236,9 @@ class Timeline: Drawable {
         screenWriter.moveTo(bounds.column, bounds.row + 2)
         for cursor in fillIntervalSlots.enumerated() {
             if cursor.offset % 2 == 0 {
-                //screenWriter.printRaw("▔")
                 screenWriter.printLineAtCursor("▔")
             }else {
-                screenWriter.moveRight()
+                screenWriter.printLineAtCursor(" ")
             }
             
         }

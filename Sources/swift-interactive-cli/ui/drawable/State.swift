@@ -24,8 +24,6 @@ struct Binding<T:Equatable> {
     var projectedValue: T {
         valueBox.value
     }
-    
-
 }
 
 class Box<T> {

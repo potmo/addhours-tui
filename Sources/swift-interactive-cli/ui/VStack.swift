@@ -52,6 +52,7 @@ class VStack: Drawable {
                 return .skippedDraw
             }
             
+            //TODO: The forced concept is a bit off. If we call draw it should draw
             let redrew = child.drawable.draw(with: screenWriter.bound(to: child.drawBounds),
                                              in: child.drawBounds,
                                              force: forceRest)
@@ -66,9 +67,9 @@ class VStack: Drawable {
             return redrew
         }
         let usedBounds = getDrawBounds(given: bounds, with: Arrange(.fill, .alignStart))
-        if usedBounds != lastBounds {
+        if usedBounds != lastBounds || forced {
             
-            if lastBounds == nil {
+            if lastBounds == nil || forced {
                 lastBounds = bounds
             }
             

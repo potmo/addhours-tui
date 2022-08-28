@@ -26,7 +26,7 @@ class Terminal {
         window.enterAlternativeScreenMode()
         mouse.startListening()
         writer.enterProgressiveEnhancementKeyMode()
-        //writer.enterAllowOtherKeysMode()
+        writer.enterModifyOtherKeysMode()
         writer.disableWraparound()
     }
     
@@ -35,7 +35,7 @@ class Terminal {
         mouse.stopListening()
         writer.enableWraparound()
         writer.exitProgressiveEnhancementKeyMode()
-        //writer.exitAllowOtherKeysMode()
+        writer.exitModifyOtherKeysMode()
         window.exitAlternativeScreenMode()
         standardIn.terminate()
         writer.flushBuffer()

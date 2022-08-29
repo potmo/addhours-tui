@@ -3,89 +3,86 @@ import Foundation
 class ScrollList: Drawable {
     
     
-    private var children: [Drawable]
-    private var needsRedraw: RequiresRedraw
-    private var lastDrawBounds: [GlobalDrawBounds]
+    private var children: [ContainerChild]
     private var scroll = Scroll.bottom
     private let SCROLL_BAR_WIDTH = 1
     
     init(@DrawableBuilder _ content: () -> [Drawable]) {
-        self.children = content()
-        self.needsRedraw = .yes
-        self.lastDrawBounds = []
+        self.children = content().map{ drawable in
+            return ContainerChild(drawable: drawable,
+                                  requiresRedraw: .yes,
+                                  drawBounds: GlobalDrawBounds(),
+                                  didDraw: .skippedDraw)
+        }
     }
     
     func setChildren(children: [Drawable]) {
-        self.children = children
+        self.children = children.map{ drawable in
+            return ContainerChild(drawable: drawable,
+                                  requiresRedraw: .yes,
+                                  drawBounds: GlobalDrawBounds(),
+                                  didDraw: .skippedDraw)
+        }
     }
 
     
     @discardableResult
     func addChild(_ child: Drawable, at index: Int)->Self {
-        //TODO: Maybe if a new element is added above the scroll window we should scroll to compensate
-        children.insert(child, at: index)
-        needsRedraw = .yes
+        let containerChild = ContainerChild(drawable: child,
+                                            requiresRedraw: .yes,
+                                            drawBounds: GlobalDrawBounds(),
+                                            didDraw: .skippedDraw)
+        children.insert(containerChild, at: index)
+        
         return self
     }
     
     @discardableResult
     func addChild(_ child: Drawable)->Self {
-        children.append(child)
-        needsRedraw = .yes
+        let containerChild = ContainerChild(drawable: child,
+                                            requiresRedraw: .yes,
+                                            drawBounds: GlobalDrawBounds(),
+                                            didDraw: .skippedDraw)
+        children.append(containerChild)
         return self
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
-        var childRedrew = false
-        var forceRest = false
         
-        let childDrawBounds = getChildDrawBounds(in: bounds)
-        
-        let currentDrawBounds = childDrawBounds.map(\.0)
-        
-        // if the bounds does not match then that means that we need to redraw all of them
-        if lastDrawBounds != currentDrawBounds || needsRedraw == .yes {
-            forceRest = true
-        }
-        
-        let childrenToDraw = childDrawBounds
-            .filter{ (childBounds, child) in
-                // check fully above
-                if childBounds.row + childBounds.height < bounds.row {
-                    return false
+        self.children = updateChildDrawBounds(children: children, in: bounds)
+            .map { child in
+                
+                if child.drawBounds.row + child.drawBounds.height < bounds.row {
+                    return child.didDraw(.skippedDraw)
                 }
                 
                 // check fully below
-                if childBounds.row > bounds.row + bounds.height {
-                    return false
+                if child.drawBounds.row > child.drawBounds.row + bounds.height {
+                    return child.didDraw(.skippedDraw)
                 }
                 
-                return true
+                return child.draw(with: screenWriter,
+                                  force: forced)
             }
         
-        for (drawBounds, child) in childrenToDraw {
-            
-            let redraw = child.draw(with: screenWriter.bound(to: bounds),
-                                    in: drawBounds,
-                                    force: forced || forceRest)
-            
-            switch redraw {
-                case .skippedDraw:
-                    continue
-                case .drew:
-                    childRedrew = true
-                    forceRest = true
+        let childrenInBounds = children.filter{ child in
+            if child.drawBounds.row + child.drawBounds.height < bounds.row {
+                return false
             }
+            
+            // check fully below
+            if child.drawBounds.row > child.drawBounds.row + bounds.height {
+                return false
+            }
+            
+            return true
         }
         
-        
-        
-        
-        if forceRest {
+        if forced {
             let startBackgroundRow: Int
-            if let lastChild = childrenToDraw.last {
-                startBackgroundRow = max(bounds.row, min(bounds.row + bounds.height, lastChild.0.row + lastChild.0.height))
+            if let lastChild = childrenInBounds.last {
+                startBackgroundRow = max(bounds.row, min(bounds.row + bounds.height, lastChild.drawBounds.row + lastChild.drawBounds.height))
             } else {
                 startBackgroundRow = bounds.row
             }
@@ -119,8 +116,7 @@ class ScrollList: Drawable {
              
         }
         
-        needsRedraw = .no
-        return childRedrew ? .drew : .skippedDraw
+        return children.map(\.didDraw).contains(.drew) ? .drew : .skippedDraw
     }
     
 
@@ -148,7 +144,6 @@ class ScrollList: Drawable {
     func scroll(to row: Int, in bounds: GlobalDrawBounds) {
         let maxValue = getScrollMaxValue(in: bounds)
         let newOffset = min(maxValue, max(0, row))
-        let oldValue = scroll
         if newOffset == maxValue {
             scroll = .bottom
         } else if newOffset == 0 {
@@ -156,20 +151,12 @@ class ScrollList: Drawable {
         } else {
             scroll = .offset(newOffset)
         }
-        
-        //log.log("scroll: \(scroll) \(Date().timeIntervalSinceReferenceDate)")
-        
-        if oldValue != scroll {
-            needsRedraw = .yes
-        }
-        
     }
     func scrollToBottom() {
         guard scroll != .bottom else {
             return
         }
         scroll = .bottom
-        needsRedraw = .yes
     }
     
     func scrollToTop() {
@@ -177,7 +164,6 @@ class ScrollList: Drawable {
             return
         }
         scroll = .top
-        needsRedraw = .yes
     }
     
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
@@ -196,30 +182,32 @@ class ScrollList: Drawable {
                 break
         }
         
-        let childDrawBounds = getChildDrawBounds(in: bounds)
+        self.children = updateChildDrawBounds(children: children, in: bounds)
         
-        let childUpdates = childDrawBounds.map{(drawBounds, child) in
-            return child.update(with: cause, in: drawBounds)
+        self.children = children.map { child in
+            
+            if child.drawBounds.row + child.drawBounds.height < bounds.row {
+                return child.requiringRedraw(.no)
+            }
+            
+            // check fully below
+            if child.drawBounds.row > child.drawBounds.row + bounds.height {
+                return child.requiringRedraw(.no)
+            }
+            
+            return child.update(with: cause)
         }
         
-        lastDrawBounds = childDrawBounds.map(\.0)
-        
-        if childUpdates.contains(.yes) || needsRedraw == .yes {
-            return .yes
-        } else {
-            return .no
-        }
-
+        return children.map(\.requiresRedraw).contains(.yes) ? .yes : .no
     }
     
-    func getChildDrawBounds(in bounds: GlobalDrawBounds) -> [(GlobalDrawBounds, Drawable)]{
-        var childBounds: [(GlobalDrawBounds, Drawable)] = []
+    func updateChildDrawBounds(children: [ContainerChild],in bounds: GlobalDrawBounds) -> [ContainerChild]{
         
         let scrollOffset = getScrollPosition(in: bounds)
         
         var row = bounds.row
-        for child in children {
-            let childSize = child.getMinimumSize()
+        return children.map { child in
+            let childSize = child.drawable.getMinimumSize()
             let drawBounds = GlobalDrawBounds(column: bounds.column,
                                               row: row,
                                               width: bounds.width,
@@ -227,11 +215,11 @@ class ScrollList: Drawable {
                 .offset(columns: 0, rows: -scrollOffset)
                 .offsetSize(columns: -SCROLL_BAR_WIDTH, rows: 0)
             
-            childBounds.append((drawBounds, child))
-            row += childSize.height
+            defer {
+                row += childSize.height
+            }
+            return child.updateDrawBounds(with: drawBounds)
         }
-        
-        return childBounds
     }
     
     func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
@@ -239,7 +227,7 @@ class ScrollList: Drawable {
     }
     
     func getMinimumSize() -> DrawSize {
-        let sizes = children.map{$0.getMinimumSize()}
+        let sizes = children.map(\.drawable).map{$0.getMinimumSize()}
         let width = sizes.map(\.width).max() ?? 0
         let height = max(3,sizes.map(\.height).reduce(0,+)) // make sure we have at least three lines for the scroll bar
         

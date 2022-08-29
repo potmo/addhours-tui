@@ -38,7 +38,7 @@ struct ContainerChild {
             return self.didDraw(.skippedDraw)
         }
         let didDraw = drawable.draw(with: screenWriter.bound(to: drawBounds), in: drawBounds, force: forced)
-        screenWriter.print("\(Int.random(in: 1...9))", column: drawBounds.column, row: drawBounds.row)
+        //screenWriter.print("\(Int.random(in: 1...9))", column: drawBounds.column, row: drawBounds.row)
         return ContainerChild(drawable: drawable, requiresRedraw: .no, drawBounds: drawBounds, didDraw: didDraw)
     }
 }

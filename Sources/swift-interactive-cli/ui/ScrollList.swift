@@ -79,7 +79,9 @@ class ScrollList: Drawable {
             return true
         }
         
-        if forced {
+        let didDraw: DidRedraw = children.map(\.didDraw).contains(.drew) ? .drew : .skippedDraw
+        
+        if didDraw == .drew {
             let startBackgroundRow: Int
             if let lastChild = childrenInBounds.last {
                 startBackgroundRow = max(bounds.row, min(bounds.row + bounds.height, lastChild.drawBounds.row + lastChild.drawBounds.height))
@@ -116,7 +118,7 @@ class ScrollList: Drawable {
              
         }
         
-        return children.map(\.didDraw).contains(.drew) ? .drew : .skippedDraw
+        return didDraw
     }
     
 

@@ -43,7 +43,7 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
                         }
                     }
                 }
-            }
+           }
              
             
         }
@@ -56,7 +56,11 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
                                  [Text(text:"7"), Text(text: "8"), Text(text: "9")],
                                 ])
             TextInput(text: Binding(wrappedValue: "hello"))
-            TestDynamicText().inVStack()
+            UnnacountedTime(unaccountedTimeFrom: Date().advanced(by: -60 * 20).timeIntervalSince1970)
+            Button(text: "Button")
+                .onPress { button in
+                    button.text("\(Int.random(in: 1..<1000))")
+                }.set(horizontalAlignment: .center, verticalAlignment: .center)
             Timeline()
             viewForLog
         }
@@ -119,7 +123,9 @@ terminal.window.commands.subscribe(with: terminal) { window in
 }
 
 let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
-    rootView.update(with: .tick)
+    DispatchQueue.main.async {
+        rootView.update(with: .tick)
+    }
 }
 
 terminal.window.clearScreen()

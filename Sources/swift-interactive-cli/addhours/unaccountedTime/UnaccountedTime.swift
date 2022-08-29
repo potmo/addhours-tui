@@ -2,23 +2,22 @@ import Foundation
 
 class UnnacountedTime: Drawable {
     
-    @Binding private var unaccountedTime: TimeInterval
-    @State private var unaccountedTimeText: String
-    
-    private let text: Text
-    
-    init(unaccountedTime: Binding<TimeInterval>) {
-        self._unaccountedTime = unaccountedTime
+    private var unaccountedTimeFrom: TimeInterval
+    private var text: Text
+    private var timeFormatter: DateComponentsFormatter {
+        let formatter = DateComponentsFormatter()
+        formatter.allowedUnits = [.hour, .minute, .second]
+        formatter.collapsesLargestUnit = true
+        formatter.maximumUnitCount = 2
+        formatter.unitsStyle = .abbreviated
+        formatter.zeroFormattingBehavior = .default
         
-        let formatter = RelativeDateTimeFormatter()
-        let time = formatter.localizedString(fromTimeInterval: _unaccountedTime.wrappedValue)
-        self._unaccountedTimeText = State(wrappedValue: time)
-        self.text = Text(text: _unaccountedTimeText.projectedValue)
-        
-        unaccountedTime.updatedSignal.subscribe(with: self) { newValue in
-            let time = formatter.localizedString(fromTimeInterval: newValue)
-            self.unaccountedTimeText = time
-        }
+        return formatter
+    }
+    
+    init(unaccountedTimeFrom: TimeInterval) {
+        self.unaccountedTimeFrom = unaccountedTimeFrom
+        self.text = Text(text: "")
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
@@ -26,6 +25,11 @@ class UnnacountedTime: Drawable {
     }
     
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
+        if cause == .tick {
+            let distance = Date(timeIntervalSince1970: unaccountedTimeFrom).distance(to: Date())
+            let timeString = timeFormatter.string(from: distance) ?? "?"
+            text.set(text: timeString)
+        }
         return text.update(with: cause, in: bounds)
     }
     

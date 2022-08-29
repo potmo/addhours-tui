@@ -141,7 +141,7 @@ class BoundScreenWriter {
             horizontalSkipAfter = horizontalSkip
         }
         
-       // let debugString = Array<Int>(0..<croppedString.count).map{ _ in Int.random(in: 0...9)}.map{"\($0)"}.joined(separator: "")
+        //let debugString = Array<Int>(0..<croppedString.count).map{ _ in Int.random(in: 0...9)}.map{"\($0)"}.joined(separator: "")
         
         cursor.column += croppedString.count
         printRawLine(croppedString)

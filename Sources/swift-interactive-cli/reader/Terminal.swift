@@ -67,33 +67,31 @@ class Terminal {
         mouse = TerminalMouse(writer: writer)
         keyboard = TerminalKeyboard()
         meta = TerminalMeta()
+
         
         // Spin up a thread reading from standard in
         DispatchQueue.global(qos: .userInteractive).async {
             while(true){
                 let result = self.rawReader.read(standardIn: self.ansiStandardInReader)
-                self.commands.fire(result)
-                switch result {
-                    case .mouse(let mouse):
-                        self.mouse.commands.fire(mouse)
-                    case .cursor(let cursor):
-                        self.cursor.commands.fire(cursor)
-                    case .key(let key):
-                        self.keyboard.commands.fire(key)
-                    case .window(let window):
-                        self.window.commands.fire(window)
-                    case .meta(let meta):
-                        self.meta.commands.fire(meta)
-                        continue
+                DispatchQueue.main.async {
+                    self.commands.fire(result)
+                    switch result {
+                        case .mouse(let mouse):
+                            self.mouse.commands.fire(mouse)
+                        case .cursor(let cursor):
+                            self.cursor.commands.fire(cursor)
+                        case .key(let key):
+                            self.keyboard.commands.fire(key)
+                        case .window(let window):
+                            self.window.commands.fire(window)
+                        case .meta(let meta):
+                            self.meta.commands.fire(meta)
+                    }
                 }
             }
         }
         
         self.start()
-    }
-    
-    func writeRaw(data: String, flush: Bool = false) {
-        writer.printRaw("BEL", flush: flush)
     }
 
 }

@@ -2,88 +2,75 @@ import Foundation
 
 class Expandable: Drawable {
     
-    private let header: Drawable
+    private let header: Button
     private let expansion: Drawable
-    @State private var buttonText: String
-    @State private var expanded: Bool
-    private var needsRedraw: (header: RequiresRedraw, expansion: RequiresRedraw)
+    private var expanded: Bool
+    private var headerChild: ContainerChild
+    private var expansionChild: ContainerChild
     
     init(title: String, @DrawableBuilder _ content: () -> [Drawable]) {
     
         self.expanded = false
-        let buttonText = State(wrappedValue: "▸ \(title)")
-        self._buttonText = buttonText
-        let expandButton = Button(text: buttonText.projectedValue)
-        self.header = expandButton
+        
         self.expansion = Margin(style: .backgroundColor(.brightBlack), left: 2){
             VStack(content)
         }
         
-        needsRedraw = (header: .yes, expansion: .yes)
+        self.header = Button(text: "▸ \(title)")
         
-        expandButton.align(.start, .center)
-            .onPush {
+        self.headerChild = ContainerChild(drawable: header, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw)
+        self.expansionChild = ContainerChild(drawable: expansion, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw)
+        
+        self.header
+            .set(horizontalAlignment: .start, verticalAlignment: .center)
+            .onPress { button in
                 self.expanded.toggle()
-                self.buttonText = (self.expanded ? "▾" : "▸") + " \(title)"
-                self.needsRedraw = (header: .yes, expansion: .yes)
+                self.header.text( (self.expanded ? "▾" : "▸") + " \(title)" )
             }
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
    
-        let (headerBounds, expansionBounds) = getChildBounds(from: bounds)
+        (self.headerChild, self.expansionChild) = updateChildBounds(header: headerChild, expansion: expansionChild, with: bounds)
         
-        let headerDrew: DidRedraw
-        if needsRedraw.header == .yes || forced{
-            headerDrew = header.draw(with: screenWriter.bound(to: headerBounds), in: headerBounds, force: forced)
-        }else {
-            headerDrew = .skippedDraw
-        }
+        headerChild = headerChild.draw(with: screenWriter, force: forced)
         
         guard expanded else {
-            self.needsRedraw = (header: .no, expansion: .no)
-            return headerDrew
+            return headerChild.didDraw
         }
         
-        let expansionDrew: DidRedraw
-        if needsRedraw.expansion == .yes || forced {
-            expansionDrew = expansion.draw(with: screenWriter.bound(to: expansionBounds), in: expansionBounds, force: forced)
-        }else{
-            expansionDrew = .skippedDraw
-        }
+        expansionChild = expansionChild.draw(with: screenWriter, force: forced)
         
-        self.needsRedraw = (header: .no, expansion: .no)
-        
-        return [expansionDrew, headerDrew].contains(.drew) ? .drew : .skippedDraw
+        return [expansionChild.didDraw, headerChild.didDraw].contains(.drew) ? .drew : .skippedDraw
     }
     
-    func getChildBounds(from bounds: GlobalDrawBounds) -> (header: GlobalDrawBounds, expansion: GlobalDrawBounds) {
+    func updateChildBounds(header: ContainerChild,
+                           expansion: ContainerChild,
+                           with bounds: GlobalDrawBounds) -> (header: ContainerChild, expansion: ContainerChild) {
         var availableBounds = bounds
-        let headerBounds = header.getDrawBounds(given: availableBounds, with: Arrange(.fill, .alignStart))
+        let headerBounds = header.drawable.getDrawBounds(given: availableBounds, with: Arrange(.fill, .alignStart))
+        let newHeader = header.updateDrawBounds(with: headerBounds)
         availableBounds = availableBounds.offsetSize(columns: 0, rows: -headerBounds.height)
             .offset(columns: 0, rows: headerBounds.height)
         
-        let expansionBound = expansion.getDrawBounds(given: availableBounds, with: Arrange(.fill, .alignStart))
+        let expansionBound = expansion.drawable.getDrawBounds(given: availableBounds, with: Arrange(.fill, .alignStart))
+        let newExpansion = expansionChild.updateDrawBounds(with: expansionBound)
         
-        return (header: headerBounds, expansion: expansionBound)
+        return (header: newHeader, expansion: newExpansion)
     }
     
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
-        let (headerBounds, expansionBounds) = getChildBounds(from: bounds)
+        (self.headerChild, self.expansionChild) = updateChildBounds(header: headerChild, expansion: expansionChild, with: bounds)
         
-        let headerUpdated = header.update(with: cause, in: headerBounds)
-    
-        needsRedraw = (header: headerUpdated || needsRedraw.header, expansion: .no || needsRedraw.expansion)
-                       
+        headerChild = headerChild.update(with: cause)
+        
         guard expanded else {
-            return headerUpdated
+            return headerChild.requiresRedraw
         }
         
-        let expansionUpdated = expansion.update(with: cause, in: expansionBounds)
+        expansionChild = expansionChild.update(with: cause)
         
-        needsRedraw = (header: headerUpdated || needsRedraw.header, expansion: expansionUpdated || needsRedraw.expansion)
-        
-        return needsRedraw.header || needsRedraw.expansion
+        return headerChild.requiresRedraw || expansionChild.requiresRedraw
     }
     
     func getMinimumSize() -> DrawSize {
@@ -98,7 +85,10 @@ class Expandable: Drawable {
     }
     
     func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
-        let (headerBounds, expansionBounds) = getChildBounds(from: bounds)
+        let (header, expansion) = updateChildBounds(header: headerChild, expansion: expansionChild, with: bounds)
+        let headerBounds = header.drawBounds
+        let expansionBounds = expansion.drawBounds
+        
         if expanded {
             return GlobalDrawBounds(column: headerBounds.column,
                                     row: headerBounds.row,

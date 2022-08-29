@@ -1,49 +1,32 @@
 import Foundation
 
-
-extension Button: CustomStringConvertible {
-    var description: String {
-        return "BindableButton[\(text)]"
-    }
-}
-
 class Button: Drawable {
 
-    fileprivate var state: MouseState
-    fileprivate let textDrawable: Text
-    
-    @Binding private var text: String
-    @State private var style: TextStyle
-    private var pushCallback: (() -> Void)? = nil
-    
-    init(text: Binding<String>) {
+    private var state: MouseState
+    private let textDrawable: Text
+    private var pushCallback: ((Button) -> Void)? = nil
         
-        let style = State(wrappedValue: Button.getStyleFrom(state: .normal))
-        self.state = .normal
-        self.textDrawable = Text(text: text, style: style.projectedValue).align(.center, .center)
-        self._style = style
-        self._text = text
-    }
-    
     init(text: String) {
-        let style = State(wrappedValue: Button.getStyleFrom(state: .normal))
-        self._style = style
-        let textBind = Binding(wrappedValue: text)
-        self._text = textBind
-        self.textDrawable = Text(text: textBind, style: style.projectedValue)
+        let style = Button.getStyleFrom(state: .normal)
+        self.textDrawable = Text(text: text, style: style)
         self.state = .normal
     }
     
     @discardableResult
-    func onPush(_ callback: @escaping ()->Void) -> Self {
-        self.pushCallback = callback
+    func onPress(_ pushCallback: @escaping (_ button: Button)->Void) -> Self {
+        self.pushCallback = pushCallback
         return self
     }
     
     @discardableResult
-    func align(_ horizontal: AlignDirective, _ vertical: AlignDirective) -> Self {
-        //TODO: This should maybe be some kind of cascading modifier instead
-        textDrawable.align(horizontal, vertical)
+    func set(horizontalAlignment: AlignDirective, verticalAlignment: AlignDirective) -> Self {
+        textDrawable.set(horizontalAlignment: horizontalAlignment, verticalAlignment: verticalAlignment)
+        return self
+    }
+    
+    @discardableResult
+    func text(_ text: String) -> Self {
+        self.textDrawable.set(text: text)
         return self
     }
     
@@ -70,13 +53,14 @@ class Button: Drawable {
         if state == .pressed, case let .mouse(.leftButtonUp(x, y,_,_,_)) = cause {
             if drawBounds.contains(x: x,y: y) {
                 state = .hovered
-                pushCallback?()
+                pushCallback?(self)
             } else {
                 state = .normal
             }
         }
         
-        style = Button.getStyleFrom(state: state)
+        let style = Button.getStyleFrom(state: state)
+        textDrawable.set(style: style)
         
         return textDrawable.update(with: cause, in: drawBounds)
     }

@@ -2,46 +2,45 @@ import Foundation
 
 class Text: Drawable, CustomStringConvertible {
     
-    fileprivate let text: Binding<String>
-    fileprivate var needsRedraw: RequiresRedraw
-    fileprivate var style: Binding<TextStyle>
-    fileprivate var align: Align
-    
-    init(text: Binding<String>, style: Binding<TextStyle>, align: Align = Align(.start, .start)) {
-        self.text = text
-        self.style = style
-        self.align = align
-        
-        self.needsRedraw = .yes
-        text.updatedSignal.subscribe(with: self){ _ in
-            self.needsRedraw = .yes
-        }
-        style.updatedSignal.subscribe(with: self) { _ in
-            self.needsRedraw = .yes
-        }
-        
-    }
-    
-    init(text: Binding<String>, style: TextStyle = TextStyle(), align: Align = Align(.start, .start)) {
-        self.text = text
-        self.style = Binding(wrappedValue: style)
-        self.align = align
-        self.needsRedraw = .yes
-        text.updatedSignal.subscribe(with: self){ _ in
-            self.needsRedraw = .yes
-        }
-    }
+    private var text: String
+    private var needsRedraw: RequiresRedraw
+    private var style: TextStyle
+    private var align: Align
     
     init(text: String, style: TextStyle = TextStyle(), align: Align = Align(.start, .start)) {
-        self.text = Binding(wrappedValue: text)
-        self.style = Binding(wrappedValue: style)
+        self.text = text
+        self.style = style
         self.needsRedraw = .yes
         self.align = align
     }
     
     @discardableResult
-    func align(_ horizontal: AlignDirective, _ vertical: AlignDirective) -> Self {
-        self.align = Align(horizontal, vertical)
+    func set(horizontalAlignment: AlignDirective, verticalAlignment: AlignDirective) -> Self {
+        let align = Align(horizontalAlignment, verticalAlignment)
+        guard self.align != align else {
+            return self
+        }
+        self.align = align
+        self.needsRedraw = .yes
+        return self
+    }
+    
+    @discardableResult
+    func set(text: String) -> Self {
+        guard self.text != text else {
+            return self
+        }
+        self.text = text
+        self.needsRedraw = .yes
+        return self
+    }
+    
+    @discardableResult
+    func set(style: TextStyle) -> Self {
+        guard self.style != style else {
+            return self
+        }
+        self.style = style
         self.needsRedraw = .yes
         return self
     }
@@ -49,7 +48,7 @@ class Text: Drawable, CustomStringConvertible {
     
     func draw(with screenWriter: BoundScreenWriter, in drawBounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
-        var appearence = text.projectedValue
+        var appearence = text
             
         switch align.horizontal {
             case .start:
@@ -70,7 +69,7 @@ class Text: Drawable, CustomStringConvertible {
         }
             
         screenWriter.print(appearence,
-                           with: style.projectedValue,
+                           with: style,
                            column: drawBounds.column,
                            row: drawBounds.row)
         
@@ -81,8 +80,8 @@ class Text: Drawable, CustomStringConvertible {
     }
     
     func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
-        let textSize = DrawSize(width: text.projectedValue.lines.map{$0.count}.max() ?? 0,
-                                height: text.projectedValue.lines.count)
+        let textSize = DrawSize(width: text.lines.map{$0.count}.max() ?? 0,
+                                height: text.lines.count)
         
         return bounds.truncateToSize(size: textSize,
                                      horizontally: arrangeDirective.horizontal,
@@ -94,12 +93,12 @@ class Text: Drawable, CustomStringConvertible {
     }
     
     func getMinimumSize() -> DrawSize {
-        return DrawSize(width: text.projectedValue.lines.map{$0.count}.max() ?? 0,
-                        height: text.projectedValue.lines.count)
+        return DrawSize(width: text.lines.map{$0.count}.max() ?? 0,
+                        height: text.lines.count)
     }
     
     var description: String {
-        return "Text[\(text.projectedValue)]"
+        return "Text[\(text)]"
     }
     
 }

@@ -1,7 +1,7 @@
 import Foundation
 
 
-struct Align {
+struct Align: Equatable {
     let horizontal: AlignDirective
     let vertical: AlignDirective
     init(_ horizontal: AlignDirective, _ vertical: AlignDirective) {

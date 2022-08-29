@@ -2,7 +2,7 @@
 import Foundation
 
 
-struct GlobalDrawBounds: Equatable {
+struct GlobalDrawBounds: Equatable, CustomStringConvertible {
     let column: Int
     let row: Int
     let width: Int
@@ -125,5 +125,9 @@ struct GlobalDrawBounds: Equatable {
     
     func contains(x: Int, y: Int) -> Bool {
         return (column..<column+width).contains(x) && (row..<row+height).contains(y)
+    }
+    
+    var description: String {
+        return "GDB(\(column), \(row), \(width), \(height))"
     }
 }

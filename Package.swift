@@ -10,14 +10,15 @@ let package = Package(
     ],
     
     dependencies: [
-        //.package(url: "https://github.com/Kitura/BlueSignals.git", exact: Version(2, 0, 1))
         .package(url: "https://github.com/artman/Signals", from: "6.0.0"),
+        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.13.3")
     ],
     targets: [
         .executableTarget(
             name: "swift-interactive-cli",
             dependencies: [
-                .product(name: "Signals", package: "Signals")
+                .product(name: "Signals", package: "Signals"),
+                .product(name: "SQLite", package: "SQLite.swift")
             ])
     ]
     , swiftLanguageVersions: [.v5]

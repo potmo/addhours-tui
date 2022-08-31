@@ -11,14 +11,16 @@ let package = Package(
     
     dependencies: [
         .package(url: "https://github.com/artman/Signals", from: "6.0.0"),
-        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.13.3")
+        .package(url: "https://github.com/stephencelis/SQLite.swift.git", from: "0.13.3"),
+        .package(url: "https://github.com/swift-server/swift-backtrace.git", from: "1.3.3"),
     ],
     targets: [
         .executableTarget(
             name: "swift-interactive-cli",
             dependencies: [
                 .product(name: "Signals", package: "Signals"),
-                .product(name: "SQLite", package: "SQLite.swift")
+                .product(name: "SQLite", package: "SQLite.swift"),
+                .product(name: "Backtrace", package: "swift-backtrace"),
             ])
     ]
     , swiftLanguageVersions: [.v5]

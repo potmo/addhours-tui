@@ -9,3 +9,4 @@ DerivedData/
 .netrc
 swift-interactive-cli.xcscheme
 Package.resolved
+addhours.sqlite3

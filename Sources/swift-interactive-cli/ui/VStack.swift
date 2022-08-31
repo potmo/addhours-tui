@@ -1,18 +1,39 @@
 import Foundation
 
 class VStack: Drawable {
-    private var children: [ContainerChild]
+    var children: [ContainerChild]
+    
     private var lastBounds: GlobalDrawBounds? = nil
     
     init(@DrawableBuilder _ content: () -> [Drawable]) {
-        self.children = content().map{ drawable in
-            ContainerChild(drawable: drawable, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw)
-        }
+        self.children = []
+        setChildren(to: content())
+    }
+    
+    @discardableResult
+    func addChild(_ child: Drawable, at index: Int)->Self {
+        children.insert(ContainerChild(drawable: child, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw), at: index)
+        return self
     }
     
     @discardableResult
     func addChild(_ child: Drawable)->Self {
-        children.insert(ContainerChild(drawable: child, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw), at: 0)
+        children.append(ContainerChild(drawable: child, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw))
+        return self
+    }
+    
+    @discardableResult
+    func removeChild(_ child: Drawable)->Self {
+        children.removeAll(where: { container in container.drawable === child})
+        return self
+    }
+
+    @discardableResult
+    func setChildren(to drawables: [Drawable]) -> Self {
+        self.children = []
+        drawables.forEach{ drawable in
+            self.addChild(drawable)
+        }
         return self
     }
     

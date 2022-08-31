@@ -1,8 +1,15 @@
 import Foundation
+import Backtrace
+
+Backtrace.install()
+
 let terminal = Terminal()
 
 let viewForLog = Log()
 let log: Logger = viewForLog
+let database = Database()
+let dataDispatcher = DataDispatcher()
+let projectStore = ProjectStore(database: database, dataDispatcher: dataDispatcher)
 
 func fatalError(_ message: String, file: String = #file, line: Int = #line) -> Never {
     terminal.terminate(exit: false)
@@ -21,6 +28,7 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
         HSplit(ratio: 0.5,
                left: {
             VStack{
+                ProjectListView(projectStore: projectStore)
                 ScrollList {
                     for i in 1..<10 {
                         Expandable(title: "Number \(i)") {
@@ -122,11 +130,18 @@ let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
     }
 }
 
+dataDispatcher.commands.subscribe(with: terminal) {
+    rootView.update(with: .data)
+}
+
 terminal.window.clearScreen()
 rootView.update(with: UpdateCause.none, forceDraw: true)
 terminal.writer.flushBuffer()
 
+
 log.log("Database at: \(FileManager().currentDirectoryPath)")
-let database = Database()
+
+
+
 
 RunLoop.main.run()

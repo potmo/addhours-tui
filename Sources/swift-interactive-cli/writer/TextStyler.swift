@@ -172,6 +172,13 @@ enum Color: Equatable {
     static var brightMagenta: Color { .ansi(.brightMagenta)}
     static var brightCyan: Color { .ansi(.brightCyan)}
     static var brightWhite: Color { .ansi(.brightWhite)}
+    
+    static func fromRGB(_ value: Int) -> Color {
+        let red = UInt8((value >> 16) & 0xFF)
+        let green = UInt8((value >> 8) & 0xFF)
+        let blue = UInt8(value & 0xFF)
+        return Color.rgb(r: red, g: green, b: blue)
+    }
 }
 
 enum ANSIColor: Int, Equatable {

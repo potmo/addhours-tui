@@ -64,9 +64,7 @@ class TextInput: Drawable {
                 return updateStateFrom(mouse: event, in: bounds)
             case .keyboard(let event):
                 return updateStateFrom(key: event, in: bounds)
-            case .tick:
-                return .no
-            case .none:
+            default:
                 return .no
         }
     }
@@ -125,6 +123,7 @@ class TextInput: Drawable {
     }
     
     func updateStateFrom(mouse: Mouse, in bounds: GlobalDrawBounds) -> RequiresRedraw {
+        
         if state == .normal, case let .move(x, y,_,_,_) = mouse {
             if bounds.contains(x: x,y: y) {
                 state = .hovered

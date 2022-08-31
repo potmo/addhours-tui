@@ -2,7 +2,7 @@ import Foundation
 
 import Foundation
 
-class Table: Drawable {
+class DataTable: Drawable {
     
     // TODO: THIS IS NOT REALLY IMPLEMENTED
     fileprivate let headers: [Drawable]
@@ -225,7 +225,7 @@ class Table: Drawable {
     }
     
     struct DrawBound: Equatable {
-        static func == (lhs: Table.DrawBound, rhs: Table.DrawBound) -> Bool {
+        static func == (lhs: DataTable.DrawBound, rhs: DataTable.DrawBound) -> Bool {
             return lhs.drawBound == rhs.drawBound && lhs.drawable === rhs.drawable
         }
         

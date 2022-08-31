@@ -28,6 +28,7 @@ class ProjectView: Drawable, ProjectModifiedHandler {
         if case let .mouse(.leftButtonUp(x, y,_,_,_)) = cause {
             if bounds.contains(x: x,y: y) {
                 projectStore.update(name: "\(Int.random(in: 1..<1000))", of: project)
+                self.backingText.set(style: .backgroundColor(.brightGreen)) // Temporary color
             }
         }
         

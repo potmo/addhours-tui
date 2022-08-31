@@ -29,6 +29,10 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
                left: {
             VStack{
                 ProjectListView(projectStore: projectStore)
+                Button(text: "add project").onPress{ _ in
+                    projectStore.addProject(name: "\(Int.random(in: 1...1000))",
+                                            color: .rgb(r: UInt8.random(in: 0..<255), g: UInt8.random(in: 0..<255), b: UInt8.random(in: 0..<255)))
+                }
                 ScrollList {
                     for i in 1..<10 {
                         Expandable(title: "Number \(i)") {

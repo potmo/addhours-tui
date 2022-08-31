@@ -179,6 +179,17 @@ enum Color: Equatable {
         let blue = UInt8(value & 0xFF)
         return Color.rgb(r: red, g: green, b: blue)
     }
+    
+    func toInt() -> Int {
+        switch self {
+            case .none:
+                return 0x000000
+            case .ansi:
+                return 0x000000
+            case .rgb(let r, let g, let b):
+                return (Int(r) << 16) | (Int(g) << 8) | Int(b);
+        }
+    }
 }
 
 enum ANSIColor: Int, Equatable {

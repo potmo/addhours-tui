@@ -167,7 +167,7 @@ class Database {
         }
     }*/
     
-    func update(name: String, of project: Project) throws -> Project {
+    func update(name: String, of project: Project) throws -> Project {    
         let projectsTable = Table("projects")
         let idColumn = Expression<Int>("id")
         let nameColumn = Expression<String>("name")
@@ -175,6 +175,36 @@ class Database {
         try db.run(projectsTable.filter(idColumn == project.id).update(nameColumn <- name))
         
         return Project(id: project.id, name: name, color: project.color, children: project.children)
+    }
+    
+    func addProject(name: String, color: Color) throws -> Project {
+        let projectsTable = Table("projects")
+        let nameColumn = Expression<String>("name")
+        let colorColumn = Expression<Int>("color")
+        let id = try db.run(projectsTable.insert(nameColumn <- name, colorColumn <- color.toInt()))
+        
+        return try readProject(id: Int(id))
+    }
+    
+    func readProject(id: Int) throws -> Project {
+        let projectsTable = Table("projects")
+        let idColumn = Expression<Int>("id")
+        let nameColumn = Expression<String>("name")
+        let colorColumn = Expression<Int>("color")
+        let parentColumn = Expression<Int?>("parent")
+        guard let row = try db.pluck(projectsTable.filter(idColumn == id)) else {
+            fatalError("tried to read project with id \(id) but it does not exist")
+        }
+        
+        let id = row[idColumn]
+        let name = row[nameColumn]
+        let color = Color.fromRGB(row[colorColumn])
+        
+        let children = try db.prepare(projectsTable.select(idColumn).where(parentColumn == id)).map{ element in
+            return element[idColumn]
+        }
+        
+        return Project(id: id, name: name, color: color, children: children)
     }
     
     struct TempProject {

@@ -46,6 +46,13 @@ class ProjectStore {
         })
     }
     
+    func addProject(name: String, color: Color) {
+        dataDispatcher.execute({try self.database.addProject(name: name, color: color)}, then: { project in
+            self.projects[project.id] = ProjectSignalContainer(project: project)
+            self.added.fire(project)
+        })
+    }
+    
     
     func whenAdded(call callback: ProjectAddedHandler) {
         added.subscribe(with: callback, callback: callback.projectAdded(_:))

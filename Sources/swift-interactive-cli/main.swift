@@ -14,58 +14,53 @@ func fatalError(_ message: String, file: String = #file, line: Int = #line) -> N
 }
 
 let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer) {
-    HSplit(ratio: 0.5,
-           left: {
-        VStack{
-            Text(text: "Other side", style: .color(.ansi(.cyan)).backgroundColor(.ansi(.brightBlack)))
-            
-            HStack{
-                Text(text: "------------------LEFT")
-                BoundEscaper()
-                Text(text: "RIGHT-----------------")
-            }
-            
-            ScrollList {
-                for i in 1..<10 {
-                    Expandable(title: "Number \(i)") {
-                        for j in 1..<10 {
-                            Text(text: "item \(j)", style: .backgroundColor(.ansi(.white)).color(.black))
+    VStack{
+        Timeline()
+        UnnacountedTime(unaccountedTimeFrom: Date().advanced(by: -60 * 20).timeIntervalSince1970)
+        
+        HSplit(ratio: 0.5,
+               left: {
+            VStack{
+                ScrollList {
+                    for i in 1..<10 {
+                        Expandable(title: "Number \(i)") {
+                            for j in 1..<10 {
+                                Text(text: "item \(j)", style: .backgroundColor(.ansi(.white)).color(.black))
+                            }
                         }
                     }
-                }
-                
-                Expandable(title: "Number extra") {
-                    for j in 1..<3 {
-                        Expandable(title: "Number extra \(j)") {
-                            for k in 1..<4 {
-                                Text(text: "item \(k)", style: .backgroundColor(.ansi(.white)).color(.black))
+                    
+                    Expandable(title: "Number extra") {
+                        for j in 1..<3 {
+                            Expandable(title: "Number extra \(j)") {
+                                for k in 1..<4 {
+                                    Text(text: "item \(k)", style: .backgroundColor(.ansi(.white)).color(.black))
+                                }
                             }
                         }
                     }
                 }
-           }
-             
-            
-        }
-    },
-           right: {
-        VStack{
-            Table(headers: [Text(text: "One"), Text(text: "Two"), Text(text: "Three")],
+                
+                
+            }
+        },
+               right: {
+            VStack{
+                DataTable(headers: [Text(text: "One"), Text(text: "Two"), Text(text: "Three")],
                           rows: [[Text(text:"1"), Text(text: "2"), Text(text: "3")],
                                  [Text(text:"4"), Text(text: "5"), Text(text: "5")],
                                  [Text(text:"7"), Text(text: "8"), Text(text: "9")],
                                 ])
-            TextInput(text: Binding(wrappedValue: "hello"))
-            UnnacountedTime(unaccountedTimeFrom: Date().advanced(by: -60 * 20).timeIntervalSince1970)
-            Button(text: "Button")
-                .onPress { button in
-                    button.text("\(Int.random(in: 1..<1000))")
-                }.set(horizontalAlignment: .center, verticalAlignment: .center)
-            Timeline()
-            viewForLog
-        }
+                TextInput(text: Binding(wrappedValue: "hello"))
+                Button(text: "Button")
+                    .onPress { button in
+                        button.text("\(Int.random(in: 1..<1000))")
+                    }.set(horizontalAlignment: .center, verticalAlignment: .center)
+                viewForLog
+            }
+            
+        })
     }
-    )
 }
 
 terminal.keyboard.commands.subscribe(with: terminal) { key in
@@ -73,9 +68,8 @@ terminal.keyboard.commands.subscribe(with: terminal) { key in
     log.log("\(key)")
     
     switch key {
-        case .pressKey(code: "q", _):
+        case .pressKey(code: "c", [.ctrl]):
             terminal.terminate()
-            
         case .pressKey(code: .upArrow, _):
             terminal.cursor.moveUp()
         case .pressKey(code: .downArrow, _):
@@ -131,5 +125,8 @@ let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
 terminal.window.clearScreen()
 rootView.update(with: UpdateCause.none, forceDraw: true)
 terminal.writer.flushBuffer()
+
+log.log("Database at: \(FileManager().currentDirectoryPath)")
+let database = Database()
 
 RunLoop.main.run()

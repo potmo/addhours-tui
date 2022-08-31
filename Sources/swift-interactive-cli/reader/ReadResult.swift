@@ -80,6 +80,7 @@ enum KeyCode: Equatable, CustomStringConvertible {
     
     static func from(code: Int) -> (KeyCode, Modifiers) {
         switch code {
+            case 0x00: return (.functionKey(.space), [.ctrl])
             case 0x1B: return (.functionKey(.escape), [])
             case 0x07: return (.functionKey(.bell), [])
             case 10: return (.functionKey(.enter), [])

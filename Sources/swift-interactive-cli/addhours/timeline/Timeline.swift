@@ -12,6 +12,20 @@ struct Task {
     let color: Color
 }
 
+/*
+ 
+ Left ti right-ish lines
+ 
+▕
+｜
+|
+︳
+⎹
+⎸
+▏
+
+*/
+
 class Timeline: Drawable {
     
     var visibleInterval = DateInterval(start: d("2022-01-01T09:00:00Z"), end: d("2022-01-1T18:00:00Z"))

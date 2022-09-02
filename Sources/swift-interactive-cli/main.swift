@@ -10,6 +10,7 @@ let log: Logger = viewForLog
 let database = Database()
 let dataDispatcher = DataDispatcher()
 let projectStore = ProjectStore(database: database, dataDispatcher: dataDispatcher)
+let slotStore = SlotStore(database: database, dataDispatcher: dataDispatcher)
 
 func fatalError(_ message: String, file: String = #file, line: Int = #line) -> Never {
     terminal.terminate(exit: false)

@@ -2,7 +2,7 @@ import Foundation
 
 struct Timeslot {
     let id: UUID
-    let interval: DateInterval
+    let interval: ClosedRange<TimeInterval>
     let task: Task
 }
 
@@ -28,16 +28,8 @@ struct Task {
 
 class Timeline: Drawable {
     
-    var visibleInterval = DateInterval(start: d("2022-01-01T09:00:00Z"), end: d("2022-01-1T18:00:00Z"))
+    var visibleInterval = TimeInterval.todayWithTime(hour: 9, minute: 0)...TimeInterval.todayWithTime(hour: 18, minute: 0)
     var needsRedraw: RequiresRedraw = .yes
-    
-    fileprivate static func d(_ string: String) -> Date {
-        return ISO8601DateFormatter().date(from: string)!
-    }
-    
-    fileprivate static func d(_ from: String, _ to: String) -> DateInterval {
-        return DateInterval(start: d(from), end: d(to))
-    }
     
     fileprivate static let task1 = Task(id: UUID(), name: "One", color: .ansi(.red))
     fileprivate static let task2 = Task(id: UUID(), name: "Two", color: .ansi(.blue))
@@ -46,19 +38,17 @@ class Timeline: Drawable {
     fileprivate static let task5 = Task(id: UUID(), name: "Five", color: .ansi(.cyan))
     
     var timeslots: [Timeslot] = [
-        Timeslot(id: UUID(), interval: d("2022-01-01T09:00:00Z", "2022-01-01T09:30:00Z"), task: task1),
-        Timeslot(id: UUID(), interval: d("2022-01-01T09:30:00Z", "2022-01-01T10:00:00Z"), task: task2),
-        Timeslot(id: UUID(), interval: d("2022-01-01T10:00:00Z", "2022-01-01T11:00:00Z"), task: task3),
-        Timeslot(id: UUID(), interval: d("2022-01-01T11:00:00Z", "2022-01-01T12:00:00Z"), task: task4),
-        Timeslot(id: UUID(), interval: d("2022-01-01T12:30:00Z", "2022-01-01T13:00:00Z"), task: task5),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 9, minute: 0)...TimeInterval.todayWithTime(hour: 9, minute: 30), task: task1),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 9, minute: 30)...TimeInterval.todayWithTime(hour: 10, minute: 0), task: task2),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 10, minute: 0)...TimeInterval.todayWithTime(hour: 11, minute: 0), task: task3),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 11, minute: 0)...TimeInterval.todayWithTime(hour: 12, minute: 0), task: task4),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 12, minute: 30)...TimeInterval.todayWithTime(hour: 13, minute: 0), task: task5),
         
-        Timeslot(id: UUID(), interval: d("2022-01-01T13:30:00Z", "2022-01-01T13:31:00Z"), task: task1),
-        Timeslot(id: UUID(), interval: d("2022-01-01T13:31:00Z", "2022-01-01T13:32:00Z"), task: task2),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 13, minute: 30)...TimeInterval.todayWithTime(hour: 13, minute: 31), task: task1),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 13, minute: 31)...TimeInterval.todayWithTime(hour: 13, minute: 32), task: task2),
         
-        Timeslot(id: UUID(), interval: d("2022-01-01T14:00:00Z", "2022-01-01T14:01:00Z"), task: task1),
-        Timeslot(id: UUID(), interval: d("2022-01-01T14:01:00Z", "2022-01-01T14:12:00Z"), task: task2),
-        Timeslot(id: UUID(), interval: d("2022-01-01T14:12:00Z", "2022-01-01T14:13:00Z"), task: task3),
-        Timeslot(id: UUID(), interval: d("2022-01-01T17:00:00Z", "2022-01-01T18:00:00Z"), task: task3),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 14, minute: 00)...TimeInterval.todayWithTime(hour: 14, minute: 1), task: task1),
+        Timeslot(id: UUID(), interval: TimeInterval.todayWithTime(hour: 14, minute: 1)...TimeInterval.todayWithTime(hour: 14, minute: 12), task: task2),
     ]
         
     
@@ -72,8 +62,8 @@ class Timeline: Drawable {
         dateFormatter.dateStyle = .short
         dateFormatter.timeStyle = .short
         
-        let startDateString = dateFormatter.string(from: visibleInterval.start)
-        let endDateString = dateFormatter.string(from: visibleInterval.end)
+        let startDateString = dateFormatter.string(from: Date(timeIntervalSince1970: visibleInterval.lowerBound))
+        let endDateString = dateFormatter.string(from: Date(timeIntervalSince1970:visibleInterval.upperBound))
         
         screenWriter.moveTo(bounds.column, bounds.row)
         screenWriter.printLineAtCursor(startDateString)
@@ -85,10 +75,10 @@ class Timeline: Drawable {
         let fillIntervals = Array(repeating: 0, count: bounds.width)
             .enumerated()
             .map{ cursor in
-                return visibleInterval.start.timeIntervalSince1970 + Double(cursor.offset) * fillSlotLength
+                return visibleInterval.lowerBound + Double(cursor.offset) * fillSlotLength
             }
             .map{
-                DateInterval(start: Date(timeIntervalSince1970: $0), duration: fillSlotLength)
+                return $0...($0 + fillSlotLength)
             }
         
         var fillIntervalSlots = Array(repeating: Array<FillAmount>(), count: bounds.width)
@@ -108,14 +98,14 @@ class Timeline: Drawable {
                 }
                 
                 
-                if slot.interval.intersects(fillInterval) {
+                if slot.interval.intersects(with: fillInterval) {
                     let intersection = fillInterval.intersection(with: slot.interval)!
                     
-                    if slot.interval.contains(fillInterval.end) {
+                    if slot.interval.contains(fillInterval.upperBound) {
                         fillIntervalSlots[cursor.offset].append(.partialEnd(slot, intersection.duration / fillSlotLength))
                         return
                     }
-                    else if slot.interval.contains(fillInterval.start) {
+                    else if slot.interval.contains(fillInterval.lowerBound) {
                         fillIntervalSlots[cursor.offset].append(.partialStart(slot, intersection.duration / fillSlotLength))
                         return
                     }else {
@@ -138,7 +128,13 @@ class Timeline: Drawable {
                     case ( _, .partialStart):
                         return false
                     case (.partialInside(let left, _), .partialInside(let right, _)):
-                        return left.interval.start < right.interval.start
+                        return left.interval.lowerBound < right.interval.upperBound
+                    case (.all(let left), .all(let right)):
+                        let leftStart = Date(timeIntervalSince1970: left.interval.lowerBound)
+                        let leftEnd = Date(timeIntervalSince1970: left.interval.upperBound)
+                        let rightStart = Date(timeIntervalSince1970: right.interval.lowerBound)
+                        let rightEnd = Date(timeIntervalSince1970: right.interval.upperBound)
+                        fatalError("two slots can not fill the same slot: \n\(leftStart)...\(leftEnd),\n\(rightStart)...\(rightEnd)")
                     default:
                         fatalError("It doesnt make any sense to compare \(lhs) and \(rhs)")
                 }

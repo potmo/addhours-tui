@@ -16,54 +16,51 @@ import Foundation
 
 class Timeline: Drawable, TimeSlotModifiedHandler {
     
-    private var timeSlotStore: TimeSlotStore
+    
+    private let timeSlotStore: TimeSlotStore
+    private let timer: BatchedTimer
+    
     private var slotLine: ContainerChild<HorizontalSectionLine<TimeSlot>>
     private var unaccountedTimeLine: ContainerChild<HorizontalSectionLine<Void?>>
     private var unaccountedTimeLabel: ContainerChild<UnacountedTimeLabel>
     private var timeNotchLine: ContainerChild<TimeNotchLine>
     
-    private var visibleInterval = TimeInterval.todayWithTime(hour: 9, minute: 0)...TimeInterval.todayWithTime(hour: 18, minute: 0)
-    private var unaccountedTime = TimeInterval.todayWithTime(hour: 17, minute: 00)...TimeInterval.todayWithTime(hour: 17, minute: 40)
-    private var timeSlots: [TimeSlot]
-    
-    init(timeSlotStore: TimeSlotStore) {
+    init(timeSlotStore: TimeSlotStore, timer: BatchedTimer) {
         
         self.timeSlotStore = timeSlotStore
         
-        self.slotLine = HorizontalSectionLine<TimeSlot>(visibleInterval: visibleInterval).inContainer()
-        
-        self.timeSlots = []
+        self.slotLine = HorizontalSectionLine<TimeSlot>(visibleInterval: timeSlotStore.visibleRange).inContainer()
        
-        self.unaccountedTimeLine = HorizontalSectionLine<Void?>(visibleInterval: visibleInterval).inContainer()
+        self.unaccountedTimeLine = HorizontalSectionLine<Void?>(visibleInterval: timeSlotStore.visibleRange).inContainer()
         self.unaccountedTimeLabel = UnacountedTimeLabel().inContainer()
+
+        self.timeNotchLine = TimeNotchLine(range: timeSlotStore.visibleRange).inContainer()
+
+        self.timer = timer
         
-        self.timeNotchLine = TimeNotchLine(range: visibleInterval).inContainer()
-    
         self.timeSlotStore.whenModified(call: self)
+        
+        self.timer.requestTick(in: 1.0)
     }
     
-    func timeSlotsModified(_ timeSlots: [TimeSlot], in range: ClosedRange<TimeInterval>) {
-        self.visibleInterval = range
-        self.timeSlots = timeSlots
-        
-        
-        
-        let sections = timeSlots.map { timeSlot in
+    func timeSlotsModified() {
+
+        let sections = timeSlotStore.timeSlots.map { timeSlot in
             return SectionSlot(interval: timeSlot.range, color: timeSlot.project.color, data: timeSlot)
         }
         
         self.slotLine.drawable.setSections(sections)
-        self.slotLine.drawable.setVisibleInterval(range)
+        self.slotLine.drawable.setVisibleInterval(timeSlotStore.visibleRange)
         
-        self.unaccountedTimeLine.drawable.setVisibleInterval(range)
+        self.unaccountedTimeLine.drawable.setVisibleInterval(timeSlotStore.visibleRange)
 
         self.updateUnaccountedTimeLine()
         
-        self.timeNotchLine.drawable.setVisibleInterval(visibleInterval)
+        self.timeNotchLine.drawable.setVisibleInterval(timeSlotStore.visibleRange)
     }
     
     private func updateUnaccountedTimeLine() {
-        self.unaccountedTime = calculateUnaccountedTime(in: visibleInterval, with: timeSlots)
+        let unaccountedTime = calculateUnaccountedTime(in: timeSlotStore.visibleRange, with: timeSlotStore.timeSlots)
         self.unaccountedTimeLabel.drawable.setUnaccountedTime(unaccountedTime: unaccountedTime)
         
         
@@ -80,10 +77,10 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         
         //TODO: Make this configurable
         let dayStarts = TimeInterval.todayWithTime(hour: 09, minute: 00)
-        let dayEnds = TimeInterval.todayWithTime(hour: 18, minute: 00)
+        //let dayEnds = TimeInterval.todayWithTime(hour: 18, minute: 00)
         
         let lowerBound = min(slots.last?.range.upperBound ?? dayStarts, now)
-        let upperBound = min(dayEnds, now)
+        let upperBound = max(lowerBound, now)
         
         return lowerBound...upperBound
     }
@@ -95,8 +92,8 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         dateFormatter.dateStyle = .short
         dateFormatter.timeStyle = .short
         
-        let startDateString = dateFormatter.string(from: Date(timeIntervalSince1970: visibleInterval.lowerBound))
-        let endDateString = dateFormatter.string(from: Date(timeIntervalSince1970: visibleInterval.upperBound))
+        let startDateString = dateFormatter.string(from: Date(timeIntervalSince1970: timeSlotStore.visibleRange.lowerBound))
+        let endDateString = dateFormatter.string(from: Date(timeIntervalSince1970: timeSlotStore.visibleRange.upperBound))
         
         screenWriter.moveTo(bounds.column, bounds.row)
         screenWriter.printLineAtCursor(startDateString)
@@ -120,9 +117,11 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
                 
         if cause == .tick {
-            self.updateUnaccountedTimeLine()
+            timer.requestTick(in: 1.0)
         }
         
+        self.updateUnaccountedTimeLine()
+
         slotLine = slotLine.updateDrawBounds(with: bounds.offset(columns: 0, rows: 1))
             .update(with: cause)
         
@@ -141,6 +140,7 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     func updateTimeLabelBounds(in bounds: GlobalDrawBounds) {
         
         let size = unaccountedTimeLabel.drawable.getMinimumSize()
+        let unaccountedTime = calculateUnaccountedTime(in: timeSlotStore.visibleRange, with: timeSlotStore.timeSlots)
         let startColumn = -1 + self.unaccountedTimeLine.drawable.getColumnFor(time: unaccountedTime.lowerBound, in: unaccountedTimeLine.drawBounds)
         let endColumn = 1 + self.unaccountedTimeLine.drawable.getColumnFor(time: unaccountedTime.upperBound, in: unaccountedTimeLine.drawBounds)
         

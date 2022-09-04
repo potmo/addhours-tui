@@ -15,17 +15,17 @@ class Log: Drawable, Logger {
     }
     
     func log(_ text: String) {
-        let text = Text(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightBlue)))
+        let text = Text(text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightBlue)))
         backingView.addChild(text)
     }
     
     func warning(_ text: String) {
-        let text = Text(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightYellow)))
+        let text = Text(text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightYellow)))
         backingView.addChild(text)
     }
     
     func error(_ text: String) {
-        let text = Text(text: text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightRed)))
+        let text = Text(text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightRed)))
         backingView.addChild(text)
     }
     

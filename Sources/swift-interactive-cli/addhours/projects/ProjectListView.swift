@@ -4,17 +4,19 @@ class ProjectListView: Drawable, ProjectAddedHandler, ProjectRemovedHandler {
     private let projectStore: ProjectStore
     private let backingList: VStack
     private var projectViews: [Int: ProjectView]
+    private var selectedProjectView: SelectedProjectView
     
-    init(projectStore: ProjectStore) {
+    init(projectStore: ProjectStore, selectedProjectView: SelectedProjectView) {
         self.projectStore = projectStore
         self.backingList = VStack{}
         self.projectViews = [:]
+        self.selectedProjectView = selectedProjectView
         self.projectStore.whenAdded(call: self)
         self.projectStore.whenRemoved(call: self)
     }
     
     func projectAdded(_ project: Project) {
-        let projectView = ProjectView(projectStore: projectStore, project: project)
+        let projectView = ProjectView(projectStore: projectStore, project: project, selectedProjectView: selectedProjectView)
         projectViews[project.id] = projectView
         backingList.addChild(projectView)
     }

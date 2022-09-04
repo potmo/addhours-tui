@@ -8,7 +8,7 @@ class Button: Drawable {
         
     init(text: String) {
         let style = Button.getStyleFrom(state: .normal)
-        self.textDrawable = Text(text: text, style: style)
+        self.textDrawable = Text(text, style: style)
         self.state = .normal
     }
     

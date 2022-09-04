@@ -7,7 +7,7 @@ class Text: Drawable, CustomStringConvertible {
     private var style: TextStyle
     private var align: Align
     
-    init(text: String, style: TextStyle = TextStyle(), align: Align = Align(.start, .start)) {
+    init(_ text: String, style: TextStyle = TextStyle(), align: Align = Align(.start, .start)) {
         self.text = text
         self.style = style
         self.needsRedraw = .yes

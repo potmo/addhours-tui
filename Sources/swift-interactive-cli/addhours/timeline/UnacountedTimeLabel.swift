@@ -6,7 +6,6 @@ class UnacountedTimeLabel: Drawable {
     private var timeFormatter: DateComponentsFormatter {
         let formatter = DateComponentsFormatter()
         formatter.allowedUnits = [.hour, .minute, .second]
-        formatter.collapsesLargestUnit = true
         formatter.maximumUnitCount = 3
         formatter.unitsStyle = .abbreviated
         formatter.zeroFormattingBehavior = .default
@@ -15,7 +14,7 @@ class UnacountedTimeLabel: Drawable {
     }
     
     init() {
-        self.text = Text(text: "")
+        self.text = Text("")
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
@@ -27,9 +26,7 @@ class UnacountedTimeLabel: Drawable {
     }
     
     func setUnaccountedTime(unaccountedTime: ClosedRange<TimeInterval>) {
-
-        let timeString = timeFormatter.string(from: Date(timeIntervalSince1970: unaccountedTime.lowerBound),
-                                              to: Date(timeIntervalSince1970: unaccountedTime.upperBound)) ?? "?"
+        let timeString = timeFormatter.string(from: unaccountedTime.duration) ?? "?"
         text.set(text: timeString)
     }
     

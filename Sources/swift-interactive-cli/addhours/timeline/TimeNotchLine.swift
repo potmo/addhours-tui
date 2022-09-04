@@ -106,8 +106,6 @@ class TimeNotchLine: Drawable {
                 screenWriter.printLineAtCursor(text)
             }
             
-            log.log("\(text) is \(index.isMultiple(of: 2))")
-            
             cursor += padding.count + marker.count + text.count
         }
         

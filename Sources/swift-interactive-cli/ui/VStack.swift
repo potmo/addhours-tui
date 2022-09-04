@@ -27,6 +27,12 @@ class VStack: Drawable {
         children.removeAll(where: { container in container.drawable === child})
         return self
     }
+    
+    @discardableResult
+    func removeAllChildren() -> Self {
+        children = []
+        return self
+    }
 
     @discardableResult
     func setChildren(to drawables: [Drawable]) -> Self {
@@ -36,9 +42,14 @@ class VStack: Drawable {
         }
         return self
     }
+
+    @discardableResult
+    func setChildren(@DrawableBuilder _ content: () -> [Drawable]) -> Self {
+        setChildren(to: content())
+        return self
+    }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
-        
         children = childrenWithUpdatedDrawBounds(children: children, in: bounds)
 
         children = children.map{ child in
@@ -75,7 +86,7 @@ class VStack: Drawable {
             return child.update(with: cause)
         }
         
-        return children.map(\.requiresRedraw).contains(.yes) ? .yes : .no
+        return children.map(\.requiresRedraw).reduce(.no){ prev, curr in prev || curr}
     }
     
     func childrenWithUpdatedDrawBounds(children: [TypeErasedContainerChild], in bounds: GlobalDrawBounds) -> [TypeErasedContainerChild]{

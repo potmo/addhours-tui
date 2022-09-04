@@ -6,6 +6,8 @@ class TerminalRootView {
     private let window: TerminalWindow
     private let writer: TerminalWriter
     
+    var paused: Bool = false
+    
     init (window: TerminalWindow, writer: TerminalWriter, rootChildMaker: ()->Drawable) {
         self.child = rootChildMaker()
         self.window = window
@@ -13,6 +15,10 @@ class TerminalRootView {
     }
     
     func update(with cause: UpdateCause, forceDraw: Bool = false) {
+        
+        if paused {
+            return
+        }
         
         let bounds = GlobalDrawBounds(column: 1, row: 1, width: window.width, height: window.height)
         

@@ -12,7 +12,9 @@ let dataDispatcher = DataDispatcher()
 let projectStore = ProjectStore(database: database, dataDispatcher: dataDispatcher)
 let slotStore = TimeSlotStore(database: database,
                           dataDispatcher: dataDispatcher,
-                          selectedRange: TimeInterval.todayWithRange(start: (hour: 8, minute: 0), end: (hour: 19, minute: 0)))
+                          selectedRange: TimeInterval.todayWithRange(start: (hour: 8, minute: 0), end: (hour: 24, minute: 0)))
+
+let batchedTimer = BatchedTimer()
 
 func fatalError(_ message: String, file: String = #file, line: Int = #line) -> Never {
     terminal.terminate(exit: false)
@@ -23,14 +25,16 @@ func fatalError(_ message: String, file: String = #file, line: Int = #line) -> N
     exit(1)
 }
 
+let selectedProjectView = SelectedProjectView(projectStore: projectStore, timeSlotStore: slotStore, timer: batchedTimer)
+
 let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer) {
     VStack{
-        Timeline(timeSlotStore: slotStore)
-        
+        Timeline(timeSlotStore: slotStore, timer: batchedTimer)
+        selectedProjectView
         HSplit(ratio: 0.5,
                left: {
             VStack{
-                ProjectListView(projectStore: projectStore)
+                ProjectListView(projectStore: projectStore, selectedProjectView: selectedProjectView)
                 Button(text: "add project").onPress{ _ in
                     projectStore.addProject(name: "\(Int.random(in: 1...1000))",
                                             color: .rgb(r: UInt8.random(in: 0..<255), g: UInt8.random(in: 0..<255), b: UInt8.random(in: 0..<255)))
@@ -39,7 +43,7 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
                     for i in 1..<10 {
                         Expandable(title: "Number \(i)") {
                             for j in 1..<10 {
-                                Text(text: "item \(j)", style: .backgroundColor(.ansi(.white)).color(.black))
+                                Text("item \(j)", style: .backgroundColor(.ansi(.white)).color(.black))
                             }
                         }
                     }
@@ -48,22 +52,21 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
                         for j in 1..<3 {
                             Expandable(title: "Number extra \(j)") {
                                 for k in 1..<4 {
-                                    Text(text: "item \(k)", style: .backgroundColor(.ansi(.white)).color(.black))
+                                    Text("item \(k)", style: .backgroundColor(.ansi(.white)).color(.black))
                                 }
                             }
                         }
                     }
                 }
                 
-                
             }
         },
                right: {
             VStack{
-                DataTable(headers: [Text(text: "One"), Text(text: "Two"), Text(text: "Three")],
-                          rows: [[Text(text:"1"), Text(text: "2"), Text(text: "3")],
-                                 [Text(text:"4"), Text(text: "5"), Text(text: "5")],
-                                 [Text(text:"7"), Text(text: "8"), Text(text: "9")],
+                DataTable(headers: [Text("One"), Text("Two"), Text("Three")],
+                          rows: [[Text("1"), Text("2"), Text("3")],
+                                 [Text("4"), Text("5"), Text("5")],
+                                 [Text("7"), Text("8"), Text("9")],
                                 ])
                 TextInput(text: Binding(wrappedValue: "hello"))
                 Button(text: "Button")
@@ -74,6 +77,7 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
             }
             
         })
+        
     }
 }
 
@@ -84,6 +88,8 @@ terminal.keyboard.commands.subscribe(with: terminal) { key in
     switch key {
         case .pressKey(code: "c", [.ctrl]):
             terminal.terminate()
+        case .pressKey(code: "p", modifers: _):
+            rootView.paused.toggle()
         case .pressKey(code: .upArrow, _):
             terminal.cursor.moveUp()
         case .pressKey(code: .downArrow, _):
@@ -130,10 +136,8 @@ terminal.window.commands.subscribe(with: terminal) { window in
     
 }
 
-let timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
-    DispatchQueue.main.async {
-        rootView.update(with: .tick)
-    }
+batchedTimer.commands.subscribe(with: batchedTimer) { _ in
+    rootView.update(with: .tick)
 }
 
 dataDispatcher.commands.subscribe(with: terminal) {

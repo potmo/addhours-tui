@@ -15,7 +15,7 @@ class ProjectStore {
         self.database = database
         self.dataDispatcher = dataDispatcher
         self.projects = [:]
-        dataDispatcher.execute(self.database.readProjects, then: self.setProjects(projects:))
+        dataDispatcher.execute(try self.database.readProjects(), then: self.setProjects(projects:))
     }
     
     private func setProjects(projects: [Project]) {
@@ -37,7 +37,7 @@ class ProjectStore {
     }
     
     func update(name: String, of project: Project) {
-        dataDispatcher.execute({try self.database.update(name: name, of: project)}, then: { project in
+        dataDispatcher.execute(try self.database.update(name: name, of: project), then: { project in
             guard let container = self.projects[project.id] else {
                 fatalError("tried to update project but it has never been seen: \(project.id)")
             }
@@ -47,7 +47,7 @@ class ProjectStore {
     }
     
     func addProject(name: String, color: Color) {
-        dataDispatcher.execute({try self.database.addProject(name: name, color: color)}, then: { project in
+        dataDispatcher.execute(try self.database.addProject(name: name, color: color), then: { project in
             self.projects[project.id] = ProjectSignalContainer(project: project)
             self.added.fire(project)
         })

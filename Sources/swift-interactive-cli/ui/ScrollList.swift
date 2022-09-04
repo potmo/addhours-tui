@@ -3,13 +3,13 @@ import Foundation
 class ScrollList: Drawable {
     
     
-    private var children: [ContainerChild]
+    private var children: [TypeErasedContainerChild]
     private var scroll = Scroll.bottom
     private let SCROLL_BAR_WIDTH = 1
     
     init(@DrawableBuilder _ content: () -> [Drawable]) {
         self.children = content().map{ drawable in
-            return ContainerChild(drawable: drawable,
+            return TypeErasedContainerChild(drawable: drawable,
                                   requiresRedraw: .yes,
                                   drawBounds: GlobalDrawBounds(),
                                   didDraw: .skippedDraw)
@@ -18,7 +18,7 @@ class ScrollList: Drawable {
     
     func setChildren(children: [Drawable]) {
         self.children = children.map{ drawable in
-            return ContainerChild(drawable: drawable,
+            return TypeErasedContainerChild(drawable: drawable,
                                   requiresRedraw: .yes,
                                   drawBounds: GlobalDrawBounds(),
                                   didDraw: .skippedDraw)
@@ -28,7 +28,7 @@ class ScrollList: Drawable {
     
     @discardableResult
     func addChild(_ child: Drawable, at index: Int)->Self {
-        let containerChild = ContainerChild(drawable: child,
+        let containerChild = TypeErasedContainerChild(drawable: child,
                                             requiresRedraw: .yes,
                                             drawBounds: GlobalDrawBounds(),
                                             didDraw: .skippedDraw)
@@ -39,7 +39,7 @@ class ScrollList: Drawable {
     
     @discardableResult
     func addChild(_ child: Drawable)->Self {
-        let containerChild = ContainerChild(drawable: child,
+        let containerChild = TypeErasedContainerChild(drawable: child,
                                             requiresRedraw: .yes,
                                             drawBounds: GlobalDrawBounds(),
                                             didDraw: .skippedDraw)
@@ -203,7 +203,7 @@ class ScrollList: Drawable {
         return children.map(\.requiresRedraw).contains(.yes) ? .yes : .no
     }
     
-    func updateChildDrawBounds(children: [ContainerChild],in bounds: GlobalDrawBounds) -> [ContainerChild]{
+    func updateChildDrawBounds(children: [TypeErasedContainerChild],in bounds: GlobalDrawBounds) -> [TypeErasedContainerChild]{
         
         let scrollOffset = getScrollPosition(in: bounds)
         

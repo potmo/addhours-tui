@@ -8,7 +8,7 @@ class DataDispatcher {
         
     }
     
-    func execute<T>( _ executionBlock: @escaping () throws -> T, then completionBlock: @escaping (T) -> Void ) -> Void {
+    func execute<T>( _ executionBlock: @autoclosure @escaping () throws -> T, then completionBlock: @escaping (T) -> Void ) -> Void {
     
         DispatchQueue.global(qos: .background).async {
             do {

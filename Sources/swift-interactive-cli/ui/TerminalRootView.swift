@@ -15,15 +15,13 @@ class TerminalRootView {
     func update(with cause: UpdateCause, forceDraw: Bool = false) {
         
         let bounds = GlobalDrawBounds(column: 1, row: 1, width: window.width, height: window.height)
-        var redraw: RequiresRedraw = .no
         
-        redraw = child.update(with: cause, in: bounds)
+        var redraw = child.update(with: cause, in: bounds)
         
         if forceDraw {
             redraw = .yes
         }
         
-    
         switch redraw {
             case .yes:
                 writer.beginSynchronizedOutput()

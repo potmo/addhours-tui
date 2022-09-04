@@ -18,11 +18,19 @@ extension TimeInterval {
     }
 }
 
+extension TimeInterval {
+    static func todayWithRange( start: (hour: Int, minute: Int), end: (hour: Int, minute: Int)) -> ClosedRange<TimeInterval> {
+        return todayWithTime(hour: start.hour, minute: start.minute)...todayWithTime(hour: end.hour, minute: end.minute)
+    }
+}
+
+
 extension ClosedRange where Bound == TimeInterval {
     var duration: TimeInterval {
         return self.upperBound - self.lowerBound
     }
 }
+
 extension ClosedRange {
     func intersection(with other: ClosedRange<Bound>) -> ClosedRange<Bound>? {
         let lowerBoundMax = Swift.max(self.lowerBound, other.lowerBound)

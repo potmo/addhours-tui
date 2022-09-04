@@ -21,18 +21,32 @@ class Database {
             fatalError("Failed creating tables: \(error)")
         }
          
+       
+        let project1:Project
+        let project2:Project
+        let project3:Project
         
         do {
-            let projects = Table("projects")
-            let name = Expression<String>("name")
-            let color = Expression<Int>("color")
-            
-            try db.run(projects.insert(name <- "Test 1", color <- 0xFF0000))
-            try db.run(projects.insert(name <- "Test 2", color <- 0x00FF00))
-            try db.run(projects.insert(name <- "Test 3", color <- 0x0000FF))
-        } catch {
+            project1 = try addProject(name: "Test1", color: Color.rgb(r: 255, g: 0, b: 0))
+            project2 = try addProject(name: "Test2", color: Color.rgb(r: 0, g: 255, b: 0))
+            project3 = try addProject(name: "Test3", color: Color.rgb(r: 0, g: 0, b: 255))
+        }catch {
             fatalError("Failed creating test projects: \(error)")
         }
+        
+        
+        do {
+            let range1 = TimeInterval.todayWithRange(start: (hour: 9, minute: 0), end: (hour: 9, minute: 30))
+            let range2 = TimeInterval.todayWithRange(start: (hour: 9, minute: 30), end: (hour: 10, minute: 0))
+            let range3 = TimeInterval.todayWithRange(start: (hour: 10, minute: 0), end: (hour: 11, minute: 0))
+            
+            _ = try addTimeSlot(in: range1, for: project1)
+            _ = try addTimeSlot(in: range2, for: project2)
+            _ = try addTimeSlot(in: range3, for: project3)
+        } catch {
+            fatalError("Failed creating test timeslots: \(error)")
+        }
+        
             
             /*
         do {
@@ -99,7 +113,7 @@ class Database {
         let startTime = Expression<TimeInterval>("start_time")
         let endTime = Expression<TimeInterval>("end_time")
         try db.run(timeslots.create(temporary: true, ifNotExists: true){ table in
-            table.column(id, primaryKey: .autoincrement)
+            table.column(id, primaryKey: true)
             table.column(project)
             table.column(startTime)
             table.column(endTime)
@@ -107,7 +121,7 @@ class Database {
         
         let tags = Table("tags")
         try db.run(tags.create(temporary: true, ifNotExists: true){ table in
-            table.column(id, primaryKey: .autoincrement)
+            table.column(id, primaryKey: true)
             table.column(name)
         })
         
@@ -115,11 +129,15 @@ class Database {
         let timeslot = Expression<Int>("timeslot")
         let tag = Expression<Int>("tag")
         try db.run(timeslotTags.create(temporary: true, ifNotExists: true){ table in
+            //TODO: Add indexes on tag and timeslot
             table.column(timeslot)
             table.column(tag)
             table.foreignKey(timeslot, references: timeslots, id)
             table.foreignKey(tag, references: tags, id)
         })
+        
+        try db.run(timeslotTags.createIndex(timeslot, ifNotExists: true))
+        try db.run(timeslotTags.createIndex(tag, ifNotExists: true))
     }
     
     func readProjects() throws -> [Project] {
@@ -129,23 +147,13 @@ class Database {
         let color = Expression<Int>("color")
         let parent = Expression<Int?>("parent")
         
-        let tempProjects = try db.prepare(projects).map { element -> TempProject in
+        let tempProjects = try db.prepare(projects.order(id, name)).map { element -> TempProject in
             let id = element[id]
             let name = element[name]
             let color = element[color]
             let parent = element[parent]
             return TempProject(id: id, name: name, color: color, parent: parent)
         }
-        
-        /*
-        let mappedProjects = tempProjects.filter{$0.parent == nil}
-            .map{tempProject -> Project in
-                let children = getChildrenOfProject(id: tempProject.id, tempProjects: tempProjects)
-                return Project(id: tempProject.id,
-                               name: tempProject.name,
-                               color: Color.fromRGB(tempProject.color),
-                               children: children)
-            }*/
         
         let mappedProjects = tempProjects.map{ temp -> Project in
             let children = tempProjects.filter{$0.parent == temp.id}.map(\.id)
@@ -155,17 +163,6 @@ class Database {
         return mappedProjects
         
     }
-    /*
-    private func getChildrenOfProject(id: Int, tempProjects: [TempProject]) -> [Project] {
-        let tempChildren = tempProjects.filter{ $0.parent == id}
-        return tempChildren.map { tempProject in
-            let children = getChildrenOfProject(id: tempProject.id, tempProjects: tempProjects)
-            return Project(id: tempProject.id,
-                           name: tempProject.name,
-                           color: Color.fromRGB(tempProject.color),
-                           children: children)
-        }
-    }*/
     
     func update(name: String, of project: Project) throws -> Project {    
         let projectsTable = Table("projects")
@@ -205,6 +202,45 @@ class Database {
         }
         
         return Project(id: id, name: name, color: color, children: children)
+    }
+    
+    func addTimeSlot(in range: ClosedRange<TimeInterval>, for project: Project) throws -> TimeSlot {
+        let timeSlotsTable = Table("timeslots")
+        let projectColumn = Expression<Int>("project")
+        let startTimeColumn = Expression<TimeInterval>("start_time")
+        let endTimeColumn = Expression<TimeInterval>("end_time")
+        
+        let id = try db.run(timeSlotsTable.insert(projectColumn <- project.id, startTimeColumn <- range.lowerBound, endTimeColumn <- range.upperBound))
+        
+        //TODO: Create set here??
+        return TimeSlot(id: Int(id), project: project, range: range, tags: [])
+        
+    }
+    
+    func readTimeSlots(in range: ClosedRange<TimeInterval>) throws -> ([TimeSlot], ClosedRange<TimeInterval>) {
+        let timeSlotsTable = Table("timeslots")
+        let projectColumn = Expression<Int>("project")
+        let startTimeColumn = Expression<TimeInterval>("start_time")
+        let endTimeColumn = Expression<TimeInterval>("end_time")
+        let idColumn = Expression<Int>("id")
+        
+        let query = timeSlotsTable.where(startTimeColumn >= range.lowerBound && endTimeColumn <= range.upperBound)
+                                  .order(startTimeColumn)
+        let rows = try db.prepareRowIterator(query)
+        let timeSlots = try rows.map{ row -> TimeSlot in
+            
+            //TODO: It is probably possible to select the project as well right here
+            // or maybe have it cached?
+            let project = try readProject(id: row[projectColumn])
+            
+            //TODO: handle tags here
+            return TimeSlot(id: row[idColumn],
+                            project: project,
+                            range: row[startTimeColumn]...row[endTimeColumn],
+                            tags: [])
+        }
+        
+        return (timeSlots, range)
     }
     
     struct TempProject {

@@ -1,7 +1,7 @@
 import Foundation
 
 class VStack: Drawable {
-    var children: [ContainerChild]
+    var children: [TypeErasedContainerChild]
     
     private var lastBounds: GlobalDrawBounds? = nil
     
@@ -12,13 +12,13 @@ class VStack: Drawable {
     
     @discardableResult
     func addChild(_ child: Drawable, at index: Int)->Self {
-        children.insert(ContainerChild(drawable: child, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw), at: index)
+        children.insert(TypeErasedContainerChild(drawable: child, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw), at: index)
         return self
     }
     
     @discardableResult
     func addChild(_ child: Drawable)->Self {
-        children.append(ContainerChild(drawable: child, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw))
+        children.append(TypeErasedContainerChild(drawable: child, requiresRedraw: .yes, drawBounds: GlobalDrawBounds(), didDraw: .skippedDraw))
         return self
     }
     
@@ -78,7 +78,7 @@ class VStack: Drawable {
         return children.map(\.requiresRedraw).contains(.yes) ? .yes : .no
     }
     
-    func childrenWithUpdatedDrawBounds(children: [ContainerChild], in bounds: GlobalDrawBounds) -> [ContainerChild]{
+    func childrenWithUpdatedDrawBounds(children: [TypeErasedContainerChild], in bounds: GlobalDrawBounds) -> [TypeErasedContainerChild]{
       
         var availableBounds = bounds
         return children.map{ child in

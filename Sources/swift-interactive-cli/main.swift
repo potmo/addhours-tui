@@ -10,7 +10,9 @@ let log: Logger = viewForLog
 let database = Database()
 let dataDispatcher = DataDispatcher()
 let projectStore = ProjectStore(database: database, dataDispatcher: dataDispatcher)
-let slotStore = SlotStore(database: database, dataDispatcher: dataDispatcher)
+let slotStore = TimeSlotStore(database: database,
+                          dataDispatcher: dataDispatcher,
+                          selectedRange: TimeInterval.todayWithRange(start: (hour: 8, minute: 0), end: (hour: 19, minute: 0)))
 
 func fatalError(_ message: String, file: String = #file, line: Int = #line) -> Never {
     terminal.terminate(exit: false)
@@ -23,8 +25,7 @@ func fatalError(_ message: String, file: String = #file, line: Int = #line) -> N
 
 let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer) {
     VStack{
-        Timeline()
-        UnnacountedTime(unaccountedTimeFrom: Date().advanced(by: -60 * 20).timeIntervalSince1970)
+        Timeline(timeSlotStore: slotStore)
         
         HSplit(ratio: 0.5,
                left: {

@@ -17,9 +17,8 @@ struct Project{
 
 struct TimeSlot {
     let id: Int
-    let project: Int
-    let startTime: TimeInterval
-    let endTime: TimeInterval
+    let project: Project
+    let range: ClosedRange<TimeInterval>
     let tags: [Tag]
 }
 

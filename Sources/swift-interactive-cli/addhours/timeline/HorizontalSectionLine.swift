@@ -30,7 +30,7 @@ class HorizontalSectionLine<DataType>: Drawable {
     
     func getColumnFor(time: TimeInterval, in bounds: GlobalDrawBounds) -> Int {
         let scalar = (time - visibleInterval.lowerBound) / visibleInterval.duration
-        return bounds.column + Int(Double(bounds.width) * scalar)
+        return bounds.column + Int((Double(bounds.width) * scalar).rounded(.down))
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {

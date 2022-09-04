@@ -384,6 +384,10 @@ struct TextStyle: Equatable {
     static func bold(_ bold: Bool = true) -> TextStyle {
         return TextStyle().bold(bold)
     }
+    
+    static func underline(_ underline: Bool = true) -> TextStyle {
+        return TextStyle().underline(underline)
+    }
 }
 
 struct StyledString: ANSIEscapedString {

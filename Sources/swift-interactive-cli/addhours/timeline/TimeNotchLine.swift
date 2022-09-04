@@ -20,12 +20,16 @@ class TimeNotchLine: Drawable {
         self.needsRedraw = .yes
     }
     
-    func getColumnFor(time: TimeInterval, in bounds: GlobalDrawBounds) -> Int {
+    func getColumnFor(time: TimeInterval, in bounds: GlobalDrawBounds) -> (column: Int, interColumnFactor: Double) {
         let scalar = (time - visibleInterval.lowerBound) / visibleInterval.duration
-        return bounds.column + Int(Double(bounds.width) * scalar)
+        
+        let trueColumn = Double(bounds.column) + Double(bounds.width) * scalar
+        let column = Int(trueColumn.rounded(.down))
+        let residue = trueColumn - Double(column)
+        return (column, residue)
     }
     
-    func getNotchLabels(in bounds: GlobalDrawBounds) -> [(Int, String)] {
+    func getNotchLabels(in bounds: GlobalDrawBounds) -> [(column: Int, timeString: String, marker: String)] {
         
         //TODO: Dynamically change the number and the units depending on what fits the bounds
         return (1...24).map{ hour in
@@ -33,8 +37,22 @@ class TimeNotchLine: Drawable {
             return TimeInterval.todayWithTime(hour: hour, minute: 0)
         }.map{ time in
             let text = dateFormatter.string(from: Date(timeIntervalSince1970: time))
-            let column = getColumnFor(time: time, in: bounds)
-            return (column, text)
+            let (column, interColumn) = getColumnFor(time: time, in: bounds)
+            let fractionChar = getFractionalBlockCharacter(fraction: interColumn)
+            return (column, text, fractionChar)
+        }
+    }
+    
+    func getFractionalBlockCharacter(fraction: Double) -> String {
+        switch (fraction*7).rounded(.down) {
+            case 0: return "▏"
+            case 1: return "▎"
+            case 2: return "▍"
+            case 3: return "▌"
+            case 4: return "▋"
+            case 5: return "▊"
+            case 6: return "▉"
+            default: return "█"
         }
     }
     
@@ -47,25 +65,51 @@ class TimeNotchLine: Drawable {
         var cursor = bounds.column
         screenWriter.moveTo(cursor, bounds.row)
         
-        for (column, text) in getNotchLabels(in: bounds) {
+        let backgroundColor1 = Color.rgb(r: 50, g: 50, b: 50)
+        let backgroundColor2 = Color.rgb(r: 0, g: 0, b: 0)
+        let style1 = TextStyle().color(.white).backgroundColor(backgroundColor1)
+        let style2 = TextStyle().color(.white).backgroundColor(backgroundColor2)
+        let transitionStyle1to2 = TextStyle().color(backgroundColor1).backgroundColor(backgroundColor2)
+        let transitionStyle2to1 = TextStyle().color(backgroundColor2).backgroundColor(backgroundColor1)
+        
+        
+        for (index,(column, text, marker)) in getNotchLabels(in: bounds).enumerated() {
             if !bounds.horizontalRange.partiallyContains(column...column+text.count) {
                 continue
             }
             
+            let previous: TextStyle
+            let transition: TextStyle
+            let next: TextStyle
+            if index.isMultiple(of: 2) {
+                previous = style1
+                transition = transitionStyle1to2
+                next = style2
+            } else {
+                previous = style2
+                transition = transitionStyle2to1
+                next = style1
+            }
+            
             let paddingLength = max(0, column - cursor)
             let padding = Array(repeating: " ", count: paddingLength).joined(separator: "")
-            screenWriter.printLineAtCursor(padding)
             
-            let printText = "|" + text
-            screenWriter.printLineAtCursor(printText)
-            cursor += paddingLength + printText.count
+            screenWriter.runWithinStyledBlock(with: previous){
+                screenWriter.printLineAtCursor(padding)
+            }
             
-            log.log("padding: \(paddingLength)")
+            screenWriter.runWithinStyledBlock(with: transition){
+                screenWriter.printLineAtCursor(marker)
+            }
+            
+            screenWriter.runWithinStyledBlock(with: next){
+                screenWriter.printLineAtCursor(text)
+            }
+            
+            log.log("\(text) is \(index.isMultiple(of: 2))")
+            
+            cursor += padding.count + marker.count + text.count
         }
-        
-        
-        //let text = Array(repeating: ":", count: bounds.width).joined(separator: "")
-        
         
         return .drew
     }

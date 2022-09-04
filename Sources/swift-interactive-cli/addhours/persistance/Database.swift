@@ -39,10 +39,12 @@ class Database {
             let range1 = TimeInterval.todayWithRange(start: (hour: 9, minute: 0), end: (hour: 9, minute: 30))
             let range2 = TimeInterval.todayWithRange(start: (hour: 9, minute: 30), end: (hour: 10, minute: 0))
             let range3 = TimeInterval.todayWithRange(start: (hour: 10, minute: 0), end: (hour: 11, minute: 0))
+            let range4 = TimeInterval.todayWithRange(start: (hour: 11, minute: 30), end: (hour: 13, minute: 0))
             
             _ = try addTimeSlot(in: range1, for: project1)
             _ = try addTimeSlot(in: range2, for: project2)
             _ = try addTimeSlot(in: range3, for: project3)
+            _ = try addTimeSlot(in: range4, for: project1)
         } catch {
             fatalError("Failed creating test timeslots: \(error)")
         }

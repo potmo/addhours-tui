@@ -144,6 +144,7 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         let startColumn = -1 + self.unaccountedTimeLine.drawable.getColumnFor(time: unaccountedTime.lowerBound, in: unaccountedTimeLine.drawBounds)
         let endColumn = 1 + self.unaccountedTimeLine.drawable.getColumnFor(time: unaccountedTime.upperBound, in: unaccountedTimeLine.drawBounds)
         
+        //TODO: Set style of tabel
         if bounds.column + bounds.width - endColumn > size.width {
             unaccountedTimeLabel = unaccountedTimeLabel.updateDrawBounds(with: GlobalDrawBounds(column: endColumn,
                                                                               row: unaccountedTimeLine.drawBounds.row,

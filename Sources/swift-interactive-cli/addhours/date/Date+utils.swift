@@ -57,3 +57,9 @@ extension ClosedRange {
         return self.contains(other.lowerBound) && self.contains(other.upperBound)
     }
 }
+
+extension ClosedRange {
+    public func partiallyContains(_ other: ClosedRange<Bound>) -> Bool {
+        return self.contains(other.lowerBound) || self.contains(other.upperBound)
+    }
+}

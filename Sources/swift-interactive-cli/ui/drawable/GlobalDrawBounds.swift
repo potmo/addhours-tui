@@ -127,6 +127,14 @@ struct GlobalDrawBounds: Equatable, CustomStringConvertible {
         return (column..<column+width).contains(x) && (row..<row+height).contains(y)
     }
     
+    var verticalRange: ClosedRange<Int> {
+        return row...(row+height)
+    }
+    
+    var horizontalRange: ClosedRange<Int> {
+        return column...(column+width)
+    }
+    
     var description: String {
         return "GDB(\(column), \(row), \(width), \(height))"
     }

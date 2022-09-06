@@ -121,6 +121,11 @@ class Database {
             table.column(endTime)
         })
         
+        try db.run(timeslots.createIndex(project, ifNotExists: true))
+        try db.run(timeslots.createIndex(startTime, ifNotExists: true))
+        try db.run(timeslots.createIndex(endTime, ifNotExists: true))
+        
+        
         let tags = Table("tags")
         try db.run(tags.create(temporary: true, ifNotExists: true){ table in
             table.column(id, primaryKey: true)
@@ -219,7 +224,10 @@ class Database {
         
     }
     
-    func readTimeSlots(in range: ClosedRange<TimeInterval>) throws -> ([TimeSlot], ClosedRange<TimeInterval>) {
+    func readTimeSlots(in range: ClosedRange<TimeInterval>) throws -> (timeSlots: [TimeSlot],
+                                                                       range: ClosedRange<TimeInterval>,
+                                                                       safeSpaceBefore: TimeInterval?,
+                                                                       safeSpaceAfter: TimeInterval?) {
         let timeSlotsTable = Table("timeslots")
         let projectColumn = Expression<Int>("project")
         let startTimeColumn = Expression<TimeInterval>("start_time")
@@ -242,7 +250,20 @@ class Database {
                             tags: [])
         }
         
-        return (timeSlots, range)
+        let safeSpace = try readSafeSpace(outside: range)
+        
+        return (timeSlots: timeSlots, range: range, safeSpaceBefore: safeSpace.before, safeSpaceAfter: safeSpace.after)
+    }
+    
+    func readSafeSpace(outside range: ClosedRange<TimeInterval>) throws -> (before: TimeInterval?, after: TimeInterval?) {
+        let timeSlotsTable = Table("timeslots")
+        let startTimeColumn = Expression<TimeInterval>("start_time")
+        let endTimeColumn = Expression<TimeInterval>("end_time")
+        
+        let firstBefore = try db.scalar(timeSlotsTable.select(endTimeColumn.max).where(endTimeColumn < range.lowerBound))
+        let firstAfter = try db.scalar(timeSlotsTable.select(startTimeColumn.min).where(startTimeColumn > range.upperBound))
+        
+        return (before: firstBefore, after: firstAfter)
     }
     
     struct TempProject {

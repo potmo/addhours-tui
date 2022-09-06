@@ -1,5 +1,23 @@
 import Foundation
 
+extension TimeInterval{
+    private static var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .short
+        return formatter
+    }
+    var timeString: String {
+        return TimeInterval.timeFormatter.string(from: Date(timeIntervalSince1970: self))
+    }
+}
+
+extension ClosedRange where Bound == TimeInterval {
+    var timeString: String {
+        return lowerBound.timeString + "..." + upperBound.timeString
+    }
+}
+
 extension TimeInterval {
     static func todayWithTime(hour: Int, minute: Int ) -> TimeInterval {
         let components = Calendar.current.dateComponents(in: Calendar.current.timeZone, from: Date())

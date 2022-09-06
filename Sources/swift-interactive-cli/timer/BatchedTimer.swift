@@ -17,9 +17,7 @@ class BatchedTimer {
     func requestTick(at time: TimeInterval) -> Void {
         
         //log.log("request tick at      \(time)")
-        // insert sorted
-        let index = scheduledTimes.firstIndex(where: { time < $0 })
-        scheduledTimes.insert(time, at: index ?? scheduledTimes.endIndex)
+        scheduledTimes.insertSorted(time)
         
         // if no timer exist then schedule the timer for the first event
         if timer == nil || scheduledTimes.count == 1 {

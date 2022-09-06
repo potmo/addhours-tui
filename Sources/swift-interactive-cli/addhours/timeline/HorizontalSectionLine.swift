@@ -53,9 +53,11 @@ class HorizontalSectionLine<DataType>: Drawable {
                 return $0...($0 + fillSlotLength)
             }
         
+        
+        //TODO: This shold probably be done in update instead or even when sections are set
         var fillIntervalSlots = Array(repeating: Array<FillAmount>(), count: bounds.width)
         
-        timeslots.forEach { slot in
+        timeslots.filter{$0.interval.duration > 0}.forEach { slot in
             fillIntervals.enumerated().forEach{ cursor in
                 let fillInterval = cursor.element
                 if fillInterval.contains(slot.interval) {

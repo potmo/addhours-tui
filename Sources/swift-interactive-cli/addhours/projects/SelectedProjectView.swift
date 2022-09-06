@@ -22,9 +22,11 @@ class SelectedProjectView: Drawable {
     func select(_ project: Project) {
         log.log("selected \(project.name)")
         
+        //TODO: This needs a handle to the project store to know if the name or anything updated
+        
         self.project = project
         
-        backingList.drawable.setChildren{
+        backingList.drawable.setTo{
             
             HStack{
                 Text("█", style: .color(project.color))
@@ -32,10 +34,22 @@ class SelectedProjectView: Drawable {
                 TextInput(text: Binding(wrappedValue: project.name))
             }
             HStack{
-                Button(text: "Add 1")
-                Button(text: "Add 2")
-                Button(text: "Add 3")
-                Button(text: "Add 4")
+                //TODO: Maybe not these spacings
+                Button(text: "+10 min").onPress{ _ in
+                    slotStore.add(10 * 60, to: project)
+                }
+                Text(" ")
+                Button(text: "+30 min").onPress{ _ in
+                    slotStore.add(30 * 60, to: project)
+                }
+                Text(" ")
+                Button(text: "+1 hour").onPress{ _ in
+                    slotStore.add(60 * 60, to: project)
+                }
+                Text(" ")
+                Button(text: "+ALL").onPress{ _ in
+                    slotStore.addAllUnaccountedTime(to: project)
+                }
             }
         }
         

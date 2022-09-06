@@ -44,7 +44,7 @@ class VStack: Drawable {
     }
 
     @discardableResult
-    func setChildren(@DrawableBuilder _ content: () -> [Drawable]) -> Self {
+    func setTo(@DrawableBuilder _ content: () -> [Drawable]) -> Self {
         setChildren(to: content())
         return self
     }

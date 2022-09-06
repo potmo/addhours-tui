@@ -60,29 +60,14 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     }
     
     private func updateUnaccountedTimeLine() {
-        let unaccountedTime = calculateUnaccountedTime(in: timeSlotStore.visibleRange, with: timeSlotStore.timeSlots)
-        self.unaccountedTimeLabel.drawable.setUnaccountedTime(unaccountedTime: unaccountedTime)
         
+        let unaccountedTime = slotStore.currentUnaccountedTime
+        self.unaccountedTimeLabel.drawable.setUnaccountedTime(unaccountedTime: unaccountedTime)
         
         self.unaccountedTimeLine.drawable.setSections([
             SectionSlot(interval: unaccountedTime, color: .brightRed, data: nil)
         ])
         
-    }
-    
-    func calculateUnaccountedTime(in range: ClosedRange<TimeInterval>, with slots: [TimeSlot]) -> ClosedRange<TimeInterval> {
-        
-        //TODO: This needs to be working for the current day displayed
-        let now = Date().timeIntervalSince1970
-        
-        //TODO: Make this configurable
-        let dayStarts = TimeInterval.todayWithTime(hour: 09, minute: 00)
-        //let dayEnds = TimeInterval.todayWithTime(hour: 18, minute: 00)
-        
-        let lowerBound = min(slots.last?.range.upperBound ?? dayStarts, now)
-        let upperBound = max(lowerBound, now)
-        
-        return lowerBound...upperBound
     }
     
     
@@ -120,6 +105,18 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
             timer.requestTick(in: 1.0)
         }
         
+        switch cause {
+            case .keyboard(.pressKey(code: "p", modifers: .ctrl)):
+                slotStore.moveVisibleRange(by: -60*10)
+                log.log("Moving timeline left")
+            case .keyboard(.pressKey(code: "å", modifers: .ctrl)):
+                slotStore.moveVisibleRange(by: 60*10)
+                log.log("Moving timeline right")
+            default:
+                break
+        }
+
+        
         self.updateUnaccountedTimeLine()
 
         slotLine = slotLine.updateDrawBounds(with: bounds.offset(columns: 0, rows: 1))
@@ -140,7 +137,8 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     func updateTimeLabelBounds(in bounds: GlobalDrawBounds) {
         
         let size = unaccountedTimeLabel.drawable.getMinimumSize()
-        let unaccountedTime = calculateUnaccountedTime(in: timeSlotStore.visibleRange, with: timeSlotStore.timeSlots)
+        let unaccountedTime = slotStore.currentUnaccountedTime
+        
         let startColumn = -1 + self.unaccountedTimeLine.drawable.getColumnFor(time: unaccountedTime.lowerBound, in: unaccountedTimeLine.drawBounds)
         let endColumn = 1 + self.unaccountedTimeLine.drawable.getColumnFor(time: unaccountedTime.upperBound, in: unaccountedTimeLine.drawBounds)
         

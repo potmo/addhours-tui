@@ -169,15 +169,20 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         let size = unaccountedTimeLabel.drawable.getMinimumSize()
         
         //TODO: Figure this out with cursor
-        guard let unaccountedRange = slotStore.allocator.getUnaccountedTimeFromCursorRestrictedToNow() else {
+        let labelRange: ClosedRange<TimeInterval>
+        if let unaccountedRange = slotStore.allocator.getUnaccountedTimeFromCursorRestrictedToNow() {
+            labelRange = unaccountedRange
+        } else if let cursor = slotStore.allocator.cursor {
+            labelRange = cursor...cursor
+        }else {
             unaccountedTimeLabel = unaccountedTimeLabel.updateDrawBounds(with: GlobalDrawBounds())
             return
         }
         
         let labelContainerBounds = bounds.offset(columns: 0, rows: 1)
         
-        let startColumn = -1 + self.unaccountedTimeLine.getColumnFor(time: unaccountedRange.lowerBound, in: labelContainerBounds)
-        let endColumn = 1 + self.unaccountedTimeLine.getColumnFor(time: unaccountedRange.upperBound, in: labelContainerBounds)
+        let startColumn = -1 + self.unaccountedTimeLine.getColumnFor(time: labelRange.lowerBound, in: labelContainerBounds)
+        let endColumn = 1 + self.unaccountedTimeLine.getColumnFor(time: labelRange.upperBound, in: labelContainerBounds)
         
         //TODO: Set style of tabel
         if bounds.column + bounds.width - endColumn > size.width {

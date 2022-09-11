@@ -4,7 +4,8 @@ import Signals
 class TimeSlotStore {
     private let database: Database
     private let dataDispatcher: DataDispatcher
-    
+    private let settings: Settings
+    let allocator: TimeSlotAllocator
     private let modified = Signal<Void>()
     private var selectedRange: ClosedRange<TimeInterval>
     private var cachedTimeSlots: [TimeSlot]
@@ -19,47 +20,23 @@ class TimeSlotStore {
         return cachedTimeSlots
     }
     
-    var currentUnaccountedTime: ClosedRange<TimeInterval> {
-        
-        //TODO: This needs to be working for the current day displayed
-        let now = Date().timeIntervalSince1970
-        
-        //TODO: Make this configurable
-        let dayStarts = TimeInterval.todayWithTime(hour: 09, minute: 00)
-        //let dayEnds = TimeInterval.todayWithTime(hour: 18, minute: 00)
-        
-        let lowerBound: TimeInterval
-        if let lastSlot = cachedTimeSlots.last {
-            lowerBound = lastSlot.range.upperBound
-        } else {
-            lowerBound = min(dayStarts, now)
-        }
-         
-        let upperBound = max(lowerBound, now)
-        
-        //TODO: the current unaccounted time could very logically go outside the
-        // visible range. Now this business logic is here to prevent overlaps
-        // when adding timeSlots might exist in database outside the visible range
-        
-        switch (firstSlotBeforeSelectedRange, firstSlotAfterSelectedRange) {
-            case (.some(let before), .some(let after)):
-                return (before...after).clamped(to: before...after)
-            case (.none, .some(let after)):
-                return (lowerBound...upperBound).clamped(to: ...after)
-            case (.some(let before), .none):
-                return (lowerBound...upperBound).clamped(to: before...)
-            case (.none, .none):
-                return lowerBound...upperBound
-        }
+    var firstOccupiedTimeBeforeVisibleRange: TimeInterval? {
+        return firstSlotBeforeSelectedRange
     }
     
-    init(database: Database, dataDispatcher: DataDispatcher, selectedRange: ClosedRange<TimeInterval>) {
+    var firstOccupiedTimeAfterVisibleRange: TimeInterval? {
+        return firstSlotAfterSelectedRange
+    }
+    
+    init(database: Database, dataDispatcher: DataDispatcher, selectedRange: ClosedRange<TimeInterval>, settings: Settings) {
         self.database = database
         self.dataDispatcher = dataDispatcher
         self.selectedRange = selectedRange
+        self.settings = settings
         self.cachedTimeSlots = []
         self.firstSlotBeforeSelectedRange = nil
         self.firstSlotAfterSelectedRange = nil
+        self.allocator = TimeSlotAllocator()
         
         dataDispatcher.execute(try self.database.readTimeSlots(in: selectedRange), then: self.setTimeSlots)
     }
@@ -68,6 +45,21 @@ class TimeSlotStore {
         let newRange = (selectedRange.lowerBound+seconds)...(selectedRange.upperBound+seconds)
         dataDispatcher.execute(try self.database.readTimeSlots(in: newRange), then: self.setTimeSlots)
     }
+    
+    func modifyVisibleRange(lowerBoundsBy lowerSeconds: TimeInterval, upperBoundsBy upperSeconds: TimeInterval) {
+        let lower = (selectedRange.lowerBound+lowerSeconds)
+        let upper = (selectedRange.upperBound+upperSeconds)
+        let middle = lower + (upper - lower) / 2
+        let constrainedLower = min(lower, middle)
+        let constrainedUpper = max(upper, middle)
+        let newRange = constrainedLower...constrainedUpper
+        if newRange.duration <= 0 {
+            log.warning("blocked attempt to set visible range to less or equal to zero")
+            return
+        }
+        dataDispatcher.execute(try self.database.readTimeSlots(in: newRange), then: self.setTimeSlots)
+    }
+    
     
     private func setTimeSlots(timeSlots: [TimeSlot],
                               in range: ClosedRange<TimeInterval>,
@@ -79,39 +71,38 @@ class TimeSlotStore {
         self.cachedTimeSlots = timeSlots
         self.firstSlotAfterSelectedRange = safeRangeBefore
         self.firstSlotAfterSelectedRange = safeRangeAfter
+        self.allocator.update(timeSlotStore: self)
+        
         modified.fire()
         
     }
     
-    func add(_ seconds: TimeInterval, to project: Project) {
-        // TODO: first we need to check if we have the entire range loaded so
-        // we safely can add it
-
-        
-        //TOOD: Then we need to make sure nothing overlaps
-        
-        //TODO: We need to check what the unaccounted time really is
-        
-        //TODO:  we should probably try to figure out where the text (if any) slot is
-        //before adding slots so we know what the upper bounds are
-        // we need to go look in the database for that though
-        
-        //TODO:  we can also do the check to see if there will be any overlaps and adjust accordingly
-        // in the database query but I'm not sure if that is easier
-        
-        //TODO: If a timeslot is touching the lower bound of the insertion range then we can modify that timeslot
-        //TODO: If a timeslot is touching the upper bound of the insertion range then we can delete that and extend the inserted slot to its upper bound
-        //TODO: marging is only valid if there are no tags or anything
-        
-        // TODO: figure out how to undo/redo
-        
-        let range = (currentUnaccountedTime.lowerBound...currentUnaccountedTime.lowerBound+seconds)
+    private func add(_ range: ClosedRange<TimeInterval>, to project: Project) {
+        log.warning("adding \(range.timeString) to \(project.name)")
         dataDispatcher.execute(try self.database.addTimeSlot(in: range, for: project), then: self.addTimeSlot)
+    }
+    
+    func add(_ seconds: TimeInterval, to project: Project) {
+        // TODO: figure out how to undo/redo
+
+        let range = allocator.getUnallocatedTimeFromCursorWith(duration: seconds)
         
+        guard let range = range else {
+            log.warning("can not add \(seconds) to \(project.name) at cursor")
+            return 
+        }
+        
+        add(range, to: project)
     }
     
     func addAllUnaccountedTime(to project: Project) {
-        add(currentUnaccountedTime.duration, to: project)
+        
+        guard let range = allocator.getUnaccountedTimeFromCursorRestrictedToNow() else {
+            log.warning("can not add all unaccounted time up to now to \(project.name) at cursor")
+            return
+        }
+        
+        add(range, to: project)
     }
     
     func addTimeSlot(timeSlot: TimeSlot) {
@@ -134,7 +125,8 @@ class TimeSlotStore {
         }
         
         cachedTimeSlots.insert(timeSlot, whenElementFirstSatisfies: {$0.range.lowerBound < $1.range.lowerBound})
-            
+        allocator.update(timeSlotStore: self)
+        
         modified.fire()
     }
     
@@ -147,3 +139,4 @@ class TimeSlotStore {
 protocol TimeSlotModifiedHandler: AnyObject {
     func timeSlotsModified() -> Void
 }
+

@@ -3,13 +3,20 @@ import Foundation
 class UnacountedTimeLabel: Drawable {
     
     private var text: Text
-    private var timeFormatter: DateComponentsFormatter {
+    private var durationFormatter: DateComponentsFormatter {
         let formatter = DateComponentsFormatter()
         formatter.allowedUnits = [.hour, .minute, .second]
         formatter.maximumUnitCount = 3
         formatter.unitsStyle = .abbreviated
         formatter.zeroFormattingBehavior = .default
         
+        return formatter
+    }
+    
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
         return formatter
     }
     
@@ -25,9 +32,13 @@ class UnacountedTimeLabel: Drawable {
         return text.update(with: cause, in: bounds)
     }
     
-    func setUnaccountedTime(unaccountedTime: ClosedRange<TimeInterval>) {
-        let timeString = timeFormatter.string(from: unaccountedTime.duration) ?? "?"
+    func setUnaccountedTime(_ range: ClosedRange<TimeInterval>) {
+        let timeString = timeFormatter.string(from: range.lowerBound.date) + " " + (durationFormatter.string(from: range.duration) ?? "?")
         text.set(text: timeString)
+    }
+    
+    func setUnaccountedTime(_ instant: TimeInterval) {
+        text.set(text: timeFormatter.string(from: instant.date))
     }
     
     func getMinimumSize() -> DrawSize {

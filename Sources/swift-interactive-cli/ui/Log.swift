@@ -17,16 +17,20 @@ class Log: Drawable, Logger {
     func log(_ text: String) {
         let text = Text(text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightBlue)))
         backingView.addChild(text)
+            .pruneChildrentFromTopTo(30)
+        
     }
     
     func warning(_ text: String) {
         let text = Text(text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightYellow)))
         backingView.addChild(text)
+            .pruneChildrentFromTopTo(30)
     }
     
     func error(_ text: String) {
         let text = Text(text, style: .color(.ansi(.black)).backgroundColor(.ansi(.brightRed)))
         backingView.addChild(text)
+            .pruneChildrentFromTopTo(30)
     }
     
     

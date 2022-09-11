@@ -20,27 +20,44 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     private let timeSlotStore: TimeSlotStore
     private let timer: BatchedTimer
     
-    private var slotLine: ContainerChild<HorizontalSectionLine<TimeSlot>>
-    private var unaccountedTimeLine: ContainerChild<HorizontalSectionLine<Void?>>
+    private var slotLine: HorizontalSectionLine<TimeSlot>
+    private var unaccountedTimeLine: HorizontalSectionLine<Void?>
     private var unaccountedTimeLabel: ContainerChild<UnacountedTimeLabel>
-    private var timeNotchLine: ContainerChild<TimeNotchLine>
+    private var cursorLine: HorizontalSectionLine<Void?>
+    private var timeNotchLine: TimeNotchLine
+    private var backingContainer: VStack
+    
+    
+
+    
+    private let updateTick: TimeInterval = 60.0
     
     init(timeSlotStore: TimeSlotStore, timer: BatchedTimer) {
         
         self.timeSlotStore = timeSlotStore
         
-        self.slotLine = HorizontalSectionLine<TimeSlot>(visibleInterval: timeSlotStore.visibleRange).inContainer()
-       
-        self.unaccountedTimeLine = HorizontalSectionLine<Void?>(visibleInterval: timeSlotStore.visibleRange).inContainer()
-        self.unaccountedTimeLabel = UnacountedTimeLabel().inContainer()
-
-        self.timeNotchLine = TimeNotchLine(range: timeSlotStore.visibleRange).inContainer()
-
+        let slotLine = HorizontalSectionLine<TimeSlot>(visibleInterval: timeSlotStore.visibleRange)
+        let unaccountedTimeLine = HorizontalSectionLine<Void?>(visibleInterval: timeSlotStore.visibleRange)
+        let unaccountedTimeLabel = UnacountedTimeLabel().inContainer()
+        let timeNotchLine = TimeNotchLine(range: timeSlotStore.visibleRange)
+        let cursorLine = HorizontalSectionLine<Void?>(visibleInterval: timeSlotStore.visibleRange)
+        
+        self.backingContainer = VStack {
+            slotLine
+            unaccountedTimeLine
+            timeNotchLine
+            cursorLine
+        }
+        
+        self.slotLine = slotLine
+        self.unaccountedTimeLine = unaccountedTimeLine
+        self.unaccountedTimeLabel = unaccountedTimeLabel
+        self.timeNotchLine = timeNotchLine
+        self.cursorLine = cursorLine
+        
         self.timer = timer
-        
         self.timeSlotStore.whenModified(call: self)
-        
-        self.timer.requestTick(in: 1.0)
+        self.timer.requestTick(in: updateTick)
     }
     
     func timeSlotsModified() {
@@ -49,113 +66,133 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
             return SectionSlot(interval: timeSlot.range, color: timeSlot.project.color, data: timeSlot)
         }
         
-        self.slotLine.drawable.setSections(sections)
-        self.slotLine.drawable.setVisibleInterval(timeSlotStore.visibleRange)
+        self.slotLine.setSections(sections)
+        self.slotLine.setVisibleInterval(timeSlotStore.visibleRange)
         
-        self.unaccountedTimeLine.drawable.setVisibleInterval(timeSlotStore.visibleRange)
+        let unaccountedTimes = slotStore.allocator.getAllUnaccountedTimeUpToNow()
+        self.unaccountedTimeLine.setVisibleInterval(timeSlotStore.visibleRange)
+        self.unaccountedTimeLine.setSections(unaccountedTimes.map{
+            SectionSlot(interval: $0, color: .brightRed, data: nil)
+        })
 
-        self.updateUnaccountedTimeLine()
-        
-        self.timeNotchLine.drawable.setVisibleInterval(timeSlotStore.visibleRange)
+        if let unaccountedRange = slotStore.allocator.getUnaccountedTimeFromCursorRestrictedToNow() {
+            self.unaccountedTimeLabel.drawable.setUnaccountedTime(unaccountedRange)
+        } else {
+            if let cursor = slotStore.allocator.cursor {
+                self.unaccountedTimeLabel.drawable.setUnaccountedTime(cursor)
+            }else{
+                self.unaccountedTimeLabel.drawable.setUnaccountedTime(0)
+            }
+        }
+
+        self.timeNotchLine.setVisibleInterval(timeSlotStore.visibleRange)
+        self.cursorLine.setVisibleInterval(timeSlotStore.visibleRange)
     }
     
-    private func updateUnaccountedTimeLine() {
-        
-        let unaccountedTime = slotStore.currentUnaccountedTime
-        self.unaccountedTimeLabel.drawable.setUnaccountedTime(unaccountedTime: unaccountedTime)
-        
-        self.unaccountedTimeLine.drawable.setSections([
-            SectionSlot(interval: unaccountedTime, color: .brightRed, data: nil)
-        ])
-        
-    }
+
     
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .short
-        dateFormatter.timeStyle = .short
-        
-        let startDateString = dateFormatter.string(from: Date(timeIntervalSince1970: timeSlotStore.visibleRange.lowerBound))
-        let endDateString = dateFormatter.string(from: Date(timeIntervalSince1970: timeSlotStore.visibleRange.upperBound))
-        
-        screenWriter.moveTo(bounds.column, bounds.row)
-        screenWriter.printLineAtCursor(startDateString)
-        screenWriter.printLineAtCursor(Array(repeating: " ", count: bounds.width - startDateString.count - endDateString.count).joined(separator: ""))
-        screenWriter.printLineAtCursor(endDateString)
-        
-        slotLine = slotLine.updateDrawBounds(with: bounds.offset(columns: 0, rows: 1).offsetSize(columns: 0, rows: -2))
-                           .draw(with: screenWriter, force: forced)
-        
-        unaccountedTimeLine = unaccountedTimeLine.updateDrawBounds(with: bounds.offset(columns: 0, rows: 2).offsetSize(columns: 0, rows: -2))
-            .draw(with: screenWriter, force: forced)
-        
+        let listDrew = backingContainer.draw(with: screenWriter, in: bounds, force: forced)
         updateTimeLabelBounds(in: bounds)
-        unaccountedTimeLabel = unaccountedTimeLabel.draw(with: screenWriter, force: unaccountedTimeLine.didDraw == .drew || forced)
+        unaccountedTimeLabel = unaccountedTimeLabel.draw(with: screenWriter, force: forced || listDrew == .drew)
         
-        timeNotchLine = timeNotchLine.draw(with: screenWriter, force: forced)
-        
-        return slotLine.didDraw || unaccountedTimeLine.didDraw || unaccountedTimeLabel.didDraw || timeNotchLine.didDraw
+        return listDrew || unaccountedTimeLabel.didDraw
     }
     
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
                 
         if cause == .tick {
-            timer.requestTick(in: 1.0)
+            timer.requestTick(in: updateTick)
         }
         
         switch cause {
-            case .keyboard(.pressKey(code: "p", modifers: .ctrl)):
+            case .keyboard(.pressKey(code: "q", modifers: .ctrl)):
                 slotStore.moveVisibleRange(by: -60*10)
                 log.log("Moving timeline left")
-            case .keyboard(.pressKey(code: "å", modifers: .ctrl)):
+            case .keyboard(.pressKey(code: "w", modifers: .ctrl)):
                 slotStore.moveVisibleRange(by: 60*10)
                 log.log("Moving timeline right")
+            case .keyboard(.pressKey(code: "a", modifers: .ctrl)):
+                slotStore.modifyVisibleRange(lowerBoundsBy: -60*60, upperBoundsBy: 60*60)
+                log.log("zoom out timeline ")
+            case .keyboard(.pressKey(code: "s", modifers: .ctrl)):
+                slotStore.modifyVisibleRange(lowerBoundsBy: 60*60, upperBoundsBy: -60*60)
+                log.log("zoom in timeline ")
             default:
                 break
         }
 
+        if let unaccountedRange = slotStore.allocator.getUnaccountedTimeFromCursorRestrictedToNow() {
+            self.unaccountedTimeLabel.drawable.setUnaccountedTime(unaccountedRange)
+        } else {
+            if let cursor = slotStore.allocator.cursor {
+                self.unaccountedTimeLabel.drawable.setUnaccountedTime(cursor)
+            }else{
+                self.unaccountedTimeLabel.drawable.setUnaccountedTime(0)
+            }
+            
+        }
         
-        self.updateUnaccountedTimeLine()
+        let unaccountedTimes = slotStore.allocator.getAllUnaccountedTimeUpToNow()
+        self.unaccountedTimeLine.setSections(unaccountedTimes.map{
+            SectionSlot(interval: $0, color: .brightRed, data: nil)
+        })
+        
+        if let cursor = slotStore.allocator.cursor {
+            let cursorRange = slotStore.visibleRange.lowerBound...cursor
+            self.cursorLine.setSections([SectionSlot(interval: cursorRange, color: .rgb(r: 0, g: 0, b: 200), data: nil)])
+        }else{
+            let cursorRange = slotStore.visibleRange
+            self.cursorLine.setSections([SectionSlot(interval: cursorRange, color: .rgb(r: 200, g: 0, b: 0), data: nil)])
+        }
 
-        slotLine = slotLine.updateDrawBounds(with: bounds.offset(columns: 0, rows: 1))
-            .update(with: cause)
-        
-        unaccountedTimeLine = unaccountedTimeLine.updateDrawBounds(with: bounds.offset(columns: 0, rows: 2))
-            .update(with: cause)
+        if let unaccountedRange = slotStore.allocator.getUnaccountedTimeFromCursorRestrictedToNow() {
+            self.unaccountedTimeLabel.drawable.setUnaccountedTime(unaccountedRange)
+        } else {
+            if let cursor = slotStore.allocator.cursor {
+                self.unaccountedTimeLabel.drawable.setUnaccountedTime(cursor)
+            }else{
+                self.unaccountedTimeLabel.drawable.setUnaccountedTime(0)
+            }
+        }
         
         updateTimeLabelBounds(in: bounds)
-        unaccountedTimeLabel = unaccountedTimeLabel.update(with: cause)
+        let listUpdated = backingContainer.update(with: cause, in: bounds)
         
-        timeNotchLine = timeNotchLine.updateDrawBounds(with: bounds.offset(columns: 0, rows: 3))
-            .update(with: cause)
-        
-        return slotLine.requiresRedraw || unaccountedTimeLine.requiresRedraw || unaccountedTimeLabel.requiresRedraw || timeNotchLine.requiresRedraw
+        return listUpdated || unaccountedTimeLabel.requiresRedraw
     }
     
     func updateTimeLabelBounds(in bounds: GlobalDrawBounds) {
         
         let size = unaccountedTimeLabel.drawable.getMinimumSize()
-        let unaccountedTime = slotStore.currentUnaccountedTime
         
-        let startColumn = -1 + self.unaccountedTimeLine.drawable.getColumnFor(time: unaccountedTime.lowerBound, in: unaccountedTimeLine.drawBounds)
-        let endColumn = 1 + self.unaccountedTimeLine.drawable.getColumnFor(time: unaccountedTime.upperBound, in: unaccountedTimeLine.drawBounds)
+        //TODO: Figure this out with cursor
+        guard let unaccountedRange = slotStore.allocator.getUnaccountedTimeFromCursorRestrictedToNow() else {
+            unaccountedTimeLabel = unaccountedTimeLabel.updateDrawBounds(with: GlobalDrawBounds())
+            return
+        }
+        
+        let labelContainerBounds = bounds.offset(columns: 0, rows: 1)
+        
+        let startColumn = -1 + self.unaccountedTimeLine.getColumnFor(time: unaccountedRange.lowerBound, in: labelContainerBounds)
+        let endColumn = 1 + self.unaccountedTimeLine.getColumnFor(time: unaccountedRange.upperBound, in: labelContainerBounds)
         
         //TODO: Set style of tabel
         if bounds.column + bounds.width - endColumn > size.width {
             unaccountedTimeLabel = unaccountedTimeLabel.updateDrawBounds(with: GlobalDrawBounds(column: endColumn,
-                                                                              row: unaccountedTimeLine.drawBounds.row,
+                                                                              row: labelContainerBounds.row,
                                                                               width: size.width,
                                                                               height: size.height))
         } else if startColumn - bounds.column > size.width {
             unaccountedTimeLabel = unaccountedTimeLabel.updateDrawBounds(with: GlobalDrawBounds(column: startColumn - size.width,
-                                                                              row: unaccountedTimeLine.drawBounds.row,
+                                                                              row: labelContainerBounds.row,
                                                                               width: size.width,
                                                                               height: size.height))
         } else {
             unaccountedTimeLabel = unaccountedTimeLabel.updateDrawBounds(with: GlobalDrawBounds(column: startColumn + 2,
-                                                                              row: unaccountedTimeLine.drawBounds.row,
+                                                                              row: labelContainerBounds.row,
                                                                               width: size.width,
                                                                               height: size.height))
         }
@@ -164,17 +201,11 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     }
     
     func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
-        return bounds.truncateToSize(size: DrawSize(width: bounds.width, height: 4), horizontally: .fill, vertically: .alignStart)
+        return backingContainer.getDrawBounds(given: bounds, with: arrangeDirective)
     }
     
     
     func getMinimumSize() -> DrawSize {
-        let sizes = [
-            slotLine.drawable.getMinimumSize(),
-            unaccountedTimeLine.drawable.getMinimumSize(),
-            timeNotchLine.drawable.getMinimumSize(),
-        ]
-        
-        return DrawSize(width: sizes.map(\.width).max() ?? 0, height: sizes.map(\.height).reduce(0, +) + 1)
+        return backingContainer.getMinimumSize()
     }
 }

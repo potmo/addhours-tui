@@ -42,6 +42,8 @@ class HorizontalSectionLine<DataType>: Drawable {
             needsRedraw = .no
         }
         
+    
+        
         let fillSlotLength = visibleInterval.duration / Double(bounds.width)
         
         let fillIntervals = Array(repeating: 0, count: bounds.width)
@@ -104,11 +106,11 @@ class HorizontalSectionLine<DataType>: Drawable {
                     case (.partialInside(let left, _), .partialInside(let right, _)):
                         return left.interval.lowerBound < right.interval.upperBound
                     case (.all(let left), .all(let right)):
-                        let leftStart = Date(timeIntervalSince1970: left.interval.lowerBound)
-                        let leftEnd = Date(timeIntervalSince1970: left.interval.upperBound)
-                        let rightStart = Date(timeIntervalSince1970: right.interval.lowerBound)
-                        let rightEnd = Date(timeIntervalSince1970: right.interval.upperBound)
-                        fatalError("two slots can not fill the same slot: \n\(leftStart)...\(leftEnd),\n\(rightStart)...\(rightEnd)")
+                        fatalError("""
+                        two slots can not fill the same slot:
+                        \(left.interval.timeString) \(left.data)
+                        \(right.interval.timeString) \(right.data)
+                        """)
                     default:
                         fatalError("It doesnt make any sense to compare \(lhs) and \(rhs)")
                 }

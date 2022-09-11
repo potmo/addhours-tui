@@ -5,14 +5,16 @@ Backtrace.install()
 
 let terminal = Terminal()
 
+let settings = Settings()
 let viewForLog = Log()
 let log: Logger = viewForLog
 let database = Database()
 let dataDispatcher = DataDispatcher()
 let projectStore = ProjectStore(database: database, dataDispatcher: dataDispatcher)
 let slotStore = TimeSlotStore(database: database,
-                          dataDispatcher: dataDispatcher,
-                          selectedRange: TimeInterval.todayWithRange(start: (hour: 8, minute: 0), end: (hour: 24, minute: 0)))
+                              dataDispatcher: dataDispatcher,
+                              selectedRange: TimeInterval.todayWithRange(start: (hour: 8, minute: 0), end: (hour: 24, minute: 0)),
+                              settings: settings)
 
 let batchedTimer = BatchedTimer()
 
@@ -86,9 +88,9 @@ terminal.keyboard.commands.subscribe(with: terminal) { key in
     log.log("\(key)")
     
     switch key {
-        case .pressKey(code: "c", [.ctrl]):
+        case .pressKey(code: "c", .ctrl):
             terminal.terminate()
-        case .pressKey(code: "p", modifers: _):
+        case .pressKey(code: "p", modifers: .ctrl):
             rootView.paused.toggle()
         case .pressKey(code: .upArrow, _):
             terminal.cursor.moveUp()

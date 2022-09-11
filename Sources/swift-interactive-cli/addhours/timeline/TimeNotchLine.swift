@@ -16,6 +16,9 @@ class TimeNotchLine: Drawable {
     }
     
     func setVisibleInterval(_ range: ClosedRange<TimeInterval>) {
+        guard self.visibleInterval != range else {
+            return
+        }
         self.visibleInterval = range
         self.needsRedraw = .yes
     }
@@ -29,18 +32,26 @@ class TimeNotchLine: Drawable {
         return (column, residue)
     }
     
-    func getNotchLabels(in bounds: GlobalDrawBounds) -> [(column: Int, timeString: String, marker: String)] {
+    func getNotchLabels(in bounds: GlobalDrawBounds) -> [(column: Int, timeString: String, marker: String, index: Int)] {
         
-        //TODO: Dynamically change the number and the units depending on what fits the bounds
-        return (1...24).map{ hour in
-            //TODO: not just today
-            return TimeInterval.todayWithTime(hour: hour, minute: 0)
-        }.map{ time in
-            let text = dateFormatter.string(from: Date(timeIntervalSince1970: time))
-            let (column, interColumn) = getColumnFor(time: time, in: bounds)
-            let fractionChar = getFractionalBlockCharacter(fraction: interColumn)
-            return (column, text, fractionChar)
-        }
+        //TODO: Dynamically change between months/days/hours/minutes/seconds ect to fit all the labels
+        let start = Calendar.current.nextFullHour(after: visibleInterval.lowerBound.date)
+        let numberOfHours = Calendar.current.numberOfHoursBetween(visibleInterval.lowerBound.date, and: visibleInterval.upperBound.date)
+        
+        log.log("Number of hours: \(numberOfHours)")
+        let labels = stride(from: 0, through: numberOfHours, by: 1)
+            .map{ hours in
+                return Calendar.current.date(byAdding: .hour, value: hours, to: start)!.timeIntervalSince1970
+            }
+            .map{ time -> (Int, String, String, Int) in
+                let text = dateFormatter.string(from: time.date)
+                let (column, interColumn) = getColumnFor(time: time, in: bounds)
+                let fractionChar = getFractionalBlockCharacter(fraction: interColumn)
+                let hour = Calendar.current.component(.hour, from: time.date)
+                return (column, text, fractionChar, hour)
+            }
+        
+        return labels
     }
     
     func getFractionalBlockCharacter(fraction: Double) -> String {
@@ -62,8 +73,7 @@ class TimeNotchLine: Drawable {
             needsRedraw = .no
         }
         
-        var cursor = bounds.column
-        screenWriter.moveTo(cursor, bounds.row)
+        
         
         let backgroundColor1 = Color.rgb(r: 50, g: 50, b: 50)
         let backgroundColor2 = Color.rgb(r: 0, g: 0, b: 0)
@@ -72,12 +82,11 @@ class TimeNotchLine: Drawable {
         let transitionStyle1to2 = TextStyle().color(backgroundColor1).backgroundColor(backgroundColor2)
         let transitionStyle2to1 = TextStyle().color(backgroundColor2).backgroundColor(backgroundColor1)
         
+        var cursor = bounds.column
+        screenWriter.moveTo(cursor, bounds.row)
         
-        for (index,(column, text, marker)) in getNotchLabels(in: bounds).enumerated() {
-            if !bounds.horizontalRange.partiallyContains(column...column+text.count) {
-                continue
-            }
-            
+        for (column, text, marker, index) in getNotchLabels(in: bounds) {
+
             let previous: TextStyle
             let transition: TextStyle
             let next: TextStyle
@@ -91,12 +100,17 @@ class TimeNotchLine: Drawable {
                 next = style1
             }
             
-            let paddingLength = max(0, column - cursor)
+            let paddingLength = max(column - cursor, 0)
             let padding = Array(repeating: " ", count: paddingLength).joined(separator: "")
+            
             
             screenWriter.runWithinStyledBlock(with: previous){
                 screenWriter.printLineAtCursor(padding)
             }
+            
+            cursor = column
+            screenWriter.moveTo(cursor, bounds.row)
+            
             
             screenWriter.runWithinStyledBlock(with: transition){
                 screenWriter.printLineAtCursor(marker)
@@ -106,7 +120,7 @@ class TimeNotchLine: Drawable {
                 screenWriter.printLineAtCursor(text)
             }
             
-            cursor += padding.count + marker.count + text.count
+            cursor += marker.count + text.count
         }
         
         return .drew

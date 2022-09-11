@@ -47,6 +47,15 @@ class ScrollList: Drawable {
         return self
     }
     
+    @discardableResult
+    func pruneChildrentFromTopTo(_ count: Int) -> Self {
+        if children.count <= count {
+            return self
+        }
+        children = Array(children[(children.count - count)...])
+        return self
+    }
+    
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
         

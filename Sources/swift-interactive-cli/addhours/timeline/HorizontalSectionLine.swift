@@ -1,21 +1,16 @@
 import Foundation
 
-struct SectionSlot<Data> {
-    let interval: ClosedRange<TimeInterval>
-    let color: Color
-    let data: Data
-}
-
-
-class HorizontalSectionLine<DataType>: Drawable {
+class HorizontalSectionLine<DataType: Equatable>: Drawable {
     
     private var needsRedraw: RequiresRedraw = .yes
     private var visibleInterval: ClosedRange<TimeInterval>// = TimeInterval.todayWithTime(hour: 9, minute: 0)...TimeInterval.todayWithTime(hour: 18, minute: 0)
     private var timeslots: [SectionSlot<DataType>]
+    private var printSlots: [[HorizontalSectionLine<DataType>.FillAmount]]
     
     init(visibleInterval: ClosedRange<TimeInterval>) {
         self.visibleInterval = visibleInterval
         self.timeslots = []
+        self.printSlots = []
     }
     
     func setSections(_ sections: [SectionSlot<DataType>]) {
@@ -30,99 +25,26 @@ class HorizontalSectionLine<DataType>: Drawable {
     
     func getColumnFor(time: TimeInterval, in bounds: GlobalDrawBounds) -> Int {
         let scalar = (time - visibleInterval.lowerBound) / visibleInterval.duration
-        return bounds.column + Int((Double(bounds.width) * scalar).rounded(.down))
+        return (bounds.column + Int((Double(bounds.width) * scalar).rounded(.down))).clamped(to: bounds.horizontalRange)
+    }
+    
+    func getDataAt(time: TimeInterval, in bounds: GlobalDrawBounds) -> [DataType] {
+        let column = getColumnFor(time: time, in: bounds)
+        return printSlots[column].map(\.slot.data)
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
         
-        guard needsRedraw == .yes || forced else {
-            return .skippedDraw
-        }
         defer {
             needsRedraw = .no
         }
         
-    
-        
-        let fillSlotLength = visibleInterval.duration / Double(bounds.width)
-        
-        let fillIntervals = Array(repeating: 0, count: bounds.width)
-            .enumerated()
-            .map{ cursor in
-                return visibleInterval.lowerBound + Double(cursor.offset) * fillSlotLength
-            }
-            .map{
-                return $0...($0 + fillSlotLength)
-            }
-        
-        
-        //TODO: This shold probably be done in update instead or even when sections are set
-        var fillIntervalSlots = Array(repeating: Array<FillAmount>(), count: bounds.width)
-        
-        timeslots.filter{$0.interval.duration > 0}.forEach { slot in
-            fillIntervals.enumerated().forEach{ cursor in
-                let fillInterval = cursor.element
-                if fillInterval.contains(slot.interval) {
-                    let intersection = fillInterval.intersection(with: slot.interval)!
-                    fillIntervalSlots[cursor.offset].append(.partialInside(slot, intersection.duration / fillInterval.duration))
-                    return
-                }
-                
-                if slot.interval.contains(fillInterval) {
-                    fillIntervalSlots[cursor.offset].append(.all(slot))
-                    return
-                }
-                
-                
-                if slot.interval.intersects(with: fillInterval) {
-                    let intersection = fillInterval.intersection(with: slot.interval)!
-                    
-                    if slot.interval.contains(fillInterval.upperBound) {
-                        fillIntervalSlots[cursor.offset].append(.partialEnd(slot, intersection.duration / fillSlotLength))
-                        return
-                    }
-                    else if slot.interval.contains(fillInterval.lowerBound) {
-                        fillIntervalSlots[cursor.offset].append(.partialStart(slot, intersection.duration / fillSlotLength))
-                        return
-                    }else {
-                        fatalError("the slot interval doesnt seem to be intersecting after all")
-                    }
-                }
-            }
-        }
-        
-        // if these are sorted it will be a lot easier later
-        fillIntervalSlots = fillIntervalSlots.map{ fillSlots in
-            return fillSlots.sorted{ lhs, rhs in
-                switch (lhs, rhs) {
-                    case (.partialStart, _):
-                        return true
-                    case (.partialEnd, _):
-                        return false
-                    case ( _, .partialEnd):
-                        return true
-                    case ( _, .partialStart):
-                        return false
-                    case (.partialInside(let left, _), .partialInside(let right, _)):
-                        return left.interval.lowerBound < right.interval.upperBound
-                    case (.all(let left), .all(let right)):
-                        fatalError("""
-                        two slots can not fill the same slot:
-                        \(left.interval.timeString) \(left.data)
-                        \(right.interval.timeString) \(right.data)
-                        """)
-                    default:
-                        fatalError("It doesnt make any sense to compare \(lhs) and \(rhs)")
-                }
-            }
-        }
-        
         let background = Color.ansi(.brightBlack)
         screenWriter.moveTo(bounds.column, bounds.row)
-        for fillSlots in fillIntervalSlots {
+        
+        for fillSlots in self.printSlots {
             
             guard !fillSlots.isEmpty else {
-                //screenWriter.printRaw(" ".backgroundColor(background).escapedString())
                 screenWriter.runWithinStyledBlock(with: .backgroundColor(background)) {
                     screenWriter.printLineAtCursor(" ")
                 }
@@ -247,7 +169,88 @@ class HorizontalSectionLine<DataType>: Drawable {
     }
     
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
+        
+        self.printSlots = getPrintSlots(in: bounds)
+         
         return needsRedraw
+    }
+    
+    private func getPrintSlots(in bounds: GlobalDrawBounds) -> [[HorizontalSectionLine<DataType>.FillAmount]]{
+        
+        let fillSlotLength = visibleInterval.duration / Double(bounds.width)
+        
+        let fillIntervals = Array(repeating: 0, count: bounds.width)
+            .enumerated()
+            .map{ cursor in
+                return visibleInterval.lowerBound + Double(cursor.offset) * fillSlotLength
+            }
+            .map{
+                return $0...($0 + fillSlotLength)
+            }
+        
+        
+        //TODO: This shold probably be done in update instead or even when sections are set
+        var fillIntervalSlots = Array(repeating: Array<FillAmount>(), count: bounds.width)
+        
+        timeslots.filter{$0.interval.duration > 0}.forEach { slot in
+            fillIntervals.enumerated().forEach{ cursor in
+                let fillInterval = cursor.element
+                if fillInterval.contains(slot.interval) {
+                    let intersection = fillInterval.intersection(with: slot.interval)!
+                    fillIntervalSlots[cursor.offset].append(.partialInside(slot, intersection.duration / fillInterval.duration))
+                    return
+                }
+                
+                if slot.interval.contains(fillInterval) {
+                    fillIntervalSlots[cursor.offset].append(.all(slot))
+                    return
+                }
+                
+                
+                if slot.interval.intersects(with: fillInterval) {
+                    let intersection = fillInterval.intersection(with: slot.interval)!
+                    
+                    if slot.interval.contains(fillInterval.upperBound) {
+                        fillIntervalSlots[cursor.offset].append(.partialEnd(slot, intersection.duration / fillSlotLength))
+                        return
+                    }
+                    else if slot.interval.contains(fillInterval.lowerBound) {
+                        fillIntervalSlots[cursor.offset].append(.partialStart(slot, intersection.duration / fillSlotLength))
+                        return
+                    }else {
+                        fatalError("the slot interval doesnt seem to be intersecting after all")
+                    }
+                }
+            }
+        }
+        
+        // if these are sorted it will be a lot easier later
+        fillIntervalSlots = fillIntervalSlots.map{ fillSlots in
+            return fillSlots.sorted{ lhs, rhs in
+                switch (lhs, rhs) {
+                    case (.partialStart, _):
+                        return true
+                    case (.partialEnd, _):
+                        return false
+                    case ( _, .partialEnd):
+                        return true
+                    case ( _, .partialStart):
+                        return false
+                    case (.partialInside(let left, _), .partialInside(let right, _)):
+                        return left.interval.lowerBound < right.interval.upperBound
+                    case (.all(let left), .all(let right)):
+                        fatalError("""
+                        two slots can not fill the same slot:
+                        \(left.interval.timeString) \(left.data)
+                        \(right.interval.timeString) \(right.data)
+                        """)
+                    default:
+                        fatalError("It doesnt make any sense to compare \(lhs) and \(rhs)")
+                }
+            }
+        }
+        
+        return fillIntervalSlots
     }
     
     func getDrawBounds(given bounds: GlobalDrawBounds, with arrangeDirective: Arrange) -> GlobalDrawBounds {
@@ -273,5 +276,24 @@ class HorizontalSectionLine<DataType>: Drawable {
         case partialStart(_ slot: SectionSlot<DataType>, _ amount: Double)
         case partialEnd(_ slot: SectionSlot<DataType>, _ amount: Double)
         case partialInside(_ slot: SectionSlot<DataType>,  _ amount: Double)
+        
+        var slot: SectionSlot<DataType> {
+            switch self {
+                case .all(let slot):
+                    return slot
+                case .partialStart(let slot, _):
+                    return slot
+                case .partialEnd(let slot, _):
+                    return slot
+                case .partialInside(let slot, _):
+                    return slot
+            }
+        }
     }
+}
+
+struct SectionSlot<Data: Equatable>: Equatable {
+    let interval: ClosedRange<TimeInterval>
+    let color: Color
+    let data: Data
 }

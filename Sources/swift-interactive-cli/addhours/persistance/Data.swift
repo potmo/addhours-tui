@@ -1,13 +1,13 @@
 import Foundation
 
 
-struct ProjectTab {
+struct ProjectTab: Equatable {
     let id: Int
     let name: String
     let projects: [Int]
 }
 
-struct Project{
+struct Project: Equatable {
     let id: Int
     let name: String
     let color: Color
@@ -15,14 +15,14 @@ struct Project{
 }
 
 
-struct TimeSlot {
+struct TimeSlot: Equatable {
     let id: Int
     let project: Project
     let range: ClosedRange<TimeInterval>
     let tags: [Tag]
 }
 
-struct Tag {
+struct Tag: Equatable {
     let id: Int
     let name: String
 }

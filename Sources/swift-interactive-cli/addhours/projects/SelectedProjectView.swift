@@ -31,6 +31,7 @@ class SelectedProjectView: Drawable {
             HStack{
                 Text("█", style: .color(project.color))
                 Text("Name:")
+                //TODO: Figure out changes here
                 TextInput(text: Binding(wrappedValue: project.name))
             }
             HStack{

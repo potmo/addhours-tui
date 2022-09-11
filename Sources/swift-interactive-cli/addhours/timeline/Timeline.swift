@@ -21,9 +21,9 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     private let timer: BatchedTimer
     
     private var slotLine: HorizontalSectionLine<TimeSlot>
-    private var unaccountedTimeLine: HorizontalSectionLine<Void?>
+    private var unaccountedTimeLine: HorizontalSectionLine<Int?>
     private var unaccountedTimeLabel: ContainerChild<UnacountedTimeLabel>
-    private var cursorLine: HorizontalSectionLine<Void?>
+    private var cursorLine: HorizontalSectionLine<Int?>
     private var timeNotchLine: TimeNotchLine
     private var backingContainer: VStack
     
@@ -37,10 +37,10 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         self.timeSlotStore = timeSlotStore
         
         let slotLine = HorizontalSectionLine<TimeSlot>(visibleInterval: timeSlotStore.visibleRange)
-        let unaccountedTimeLine = HorizontalSectionLine<Void?>(visibleInterval: timeSlotStore.visibleRange)
+        let unaccountedTimeLine = HorizontalSectionLine<Int?>(visibleInterval: timeSlotStore.visibleRange)
         let unaccountedTimeLabel = UnacountedTimeLabel().inContainer()
         let timeNotchLine = TimeNotchLine(range: timeSlotStore.visibleRange)
-        let cursorLine = HorizontalSectionLine<Void?>(visibleInterval: timeSlotStore.visibleRange)
+        let cursorLine = HorizontalSectionLine<Int?>(visibleInterval: timeSlotStore.visibleRange)
         
         self.backingContainer = VStack {
             slotLine

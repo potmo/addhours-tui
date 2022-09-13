@@ -2,10 +2,17 @@ import Foundation
 
 class TextInput: Drawable {
     
-    @Binding private var boundText: String
+    private var boundText: String
     private var cursor: String.Index
-    private var focused: Bool = false
+    private var focused: Bool = false {
+        didSet {
+            if !focused {
+                self.textChanged(text)
+            }
+        }
+    }
     private var state: MouseState = .normal
+    private let textChanged: (_ text: String) -> Void
 
     // add a space in the end to account for the cursor sitting to the right of the text
     var text: String {
@@ -19,9 +26,10 @@ class TextInput: Drawable {
         
     }
     
-    init(text: Binding<String>) {
-        self._boundText = text
-        cursor = text.projectedValue.startIndex
+    init(text: String, changedCallback: @escaping (_ text: String) -> Void) {
+        self.boundText = text
+        cursor = text.startIndex
+        self.textChanged = changedCallback
     }
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
@@ -116,8 +124,10 @@ class TextInput: Drawable {
     }
     
     func removeCharactersAtCursor() {
-        log.log("removbe")
-        let oneBeforeCursor = max(text.startIndex, text.index(before: cursor))
+        if cursor == text.startIndex {
+            return
+        }
+        let oneBeforeCursor = text.index(before: cursor)
         text = String(text[..<oneBeforeCursor]) + String(text[cursor...])
         cursor = oneBeforeCursor
     }

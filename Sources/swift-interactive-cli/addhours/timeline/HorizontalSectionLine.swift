@@ -6,19 +6,29 @@ class HorizontalSectionLine<DataType: Equatable>: Drawable {
     private var visibleInterval: ClosedRange<TimeInterval>// = TimeInterval.todayWithTime(hour: 9, minute: 0)...TimeInterval.todayWithTime(hour: 18, minute: 0)
     private var timeslots: [SectionSlot<DataType>]
     private var printSlots: [[HorizontalSectionLine<DataType>.FillAmount]]
+    private let selectCallback: ([DataType]) -> Void
     
-    init(visibleInterval: ClosedRange<TimeInterval>) {
+    init(visibleInterval: ClosedRange<TimeInterval>, _ selectCallback: @escaping ([DataType]) -> Void) {
         self.visibleInterval = visibleInterval
         self.timeslots = []
         self.printSlots = []
+        self.selectCallback = selectCallback
     }
     
     func setSections(_ sections: [SectionSlot<DataType>]) {
+        if timeslots == sections {
+            return
+        }
+        
         timeslots = sections
         self.needsRedraw = .yes
     }
     
     func setVisibleInterval(_ range: ClosedRange<TimeInterval>) {
+        
+        if visibleInterval == range {
+            return
+        }
         self.visibleInterval = range
         self.needsRedraw = .yes
     }
@@ -59,7 +69,7 @@ class HorizontalSectionLine<DataType: Equatable>: Drawable {
                             printFractionalBlockCharacter(using: screenWriter,
                                                           fraction: 1.0,
                                                           color: slot.color,
-                                                          background: background)
+                                                          background: slot.color)
                         case .partialStart(let slot, let amount):
                             printFractionalBlockCharacter(using: screenWriter,
                                                           fraction: amount,
@@ -141,7 +151,6 @@ class HorizontalSectionLine<DataType: Equatable>: Drawable {
             
         }
         
-        //TODO: Implement this
         return .drew
     }
     
@@ -164,13 +173,26 @@ class HorizontalSectionLine<DataType: Equatable>: Drawable {
             case 4: return "▋"
             case 5: return "▊"
             case 6: return "▉"
-            default: return "█"
+            default: return "█" 
         }
     }
     
     func update(with cause: UpdateCause, in bounds: GlobalDrawBounds) -> RequiresRedraw {
         
+        let previousPrintSlots = self.printSlots
         self.printSlots = getPrintSlots(in: bounds)
+        if printSlots != previousPrintSlots {
+            needsRedraw = .yes
+        }
+        
+        if case let .mouse(.leftButtonUp(x, y,_,_,_)) = cause {
+            if bounds.contains(x: x, y: y) {
+                let column = x - bounds.column
+                log.log("clicked: \n" + printSlots[column].map(\.slot.data).map{"\($0)"}.joined(separator: "\n"))
+                let data = printSlots[column].map(\.slot.data)
+                selectCallback(data)
+            }
+        }
          
         return needsRedraw
     }
@@ -262,7 +284,7 @@ class HorizontalSectionLine<DataType: Equatable>: Drawable {
         return DrawSize(width: 1, height: 1)
     }
     
-    private enum FillAmount: CustomStringConvertible{
+    private enum FillAmount: CustomStringConvertible, Equatable{
         var description: String {
             switch self {
                 case .all: return ".all"

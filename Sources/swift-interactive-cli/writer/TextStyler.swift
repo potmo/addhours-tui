@@ -282,6 +282,7 @@ struct TextStyle: Equatable {
     }
     
     var closingEscapeSequence: String {
+        //TODO: This could be that we dont close everything but print a closing sequence per thing we opened
         return "\u{001B}[0m"
     }
     

@@ -8,4 +8,10 @@ enum UpdateCause: Equatable {
     case tick
     case data
     case none
+    case selection(selection: Selection)
+}
+
+enum Selection: Equatable {
+    case project(project: Project)
+    case timeSlot(timeSlot: TimeSlot)
 }

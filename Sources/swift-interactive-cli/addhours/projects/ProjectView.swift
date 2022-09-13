@@ -5,13 +5,13 @@ class ProjectView: Drawable, ProjectModifiedHandler {
     private let projectStore: ProjectStore
     private let backingText: Text
     private var project: Project
-    private var selectedProjectView: SelectedProjectView
+    private let selector: Selector
     
-    init(projectStore: ProjectStore, project: Project, selectedProjectView: SelectedProjectView) {
+    init(projectStore: ProjectStore, project: Project, selector: Selector) {
         self.projectStore = projectStore
         self.project = project
         self.backingText = Text(project.name, style: .backgroundColor(project.color))
-        self.selectedProjectView = selectedProjectView
+        self.selector = selector
         
         projectStore.whenModified(project: project, call: self)
     }
@@ -29,8 +29,7 @@ class ProjectView: Drawable, ProjectModifiedHandler {
         
         if case let .mouse(.leftButtonUp(x, y,_,_,_)) = cause {
             if bounds.contains(x: x,y: y) {
-                //TODO: Maybe highlight it somehow
-                selectedProjectView.select(project)
+                selector.selectProject(self.project)
             }
         }
         

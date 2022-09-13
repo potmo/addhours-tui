@@ -26,21 +26,24 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     private var cursorLine: HorizontalSectionLine<Int?>
     private var timeNotchLine: TimeNotchLine
     private var backingContainer: VStack
-    
-    
-
+    private var selector: Selector
     
     private let updateTick: TimeInterval = 60.0
     
-    init(timeSlotStore: TimeSlotStore, timer: BatchedTimer) {
+    init(timeSlotStore: TimeSlotStore, timer: BatchedTimer, selector: Selector) {
         
         self.timeSlotStore = timeSlotStore
+        self.selector = selector
         
-        let slotLine = HorizontalSectionLine<TimeSlot>(visibleInterval: timeSlotStore.visibleRange)
-        let unaccountedTimeLine = HorizontalSectionLine<Int?>(visibleInterval: timeSlotStore.visibleRange)
+        let slotLine = HorizontalSectionLine<TimeSlot>(visibleInterval: timeSlotStore.visibleRange){ timeslots in
+            if let first = timeslots.first {
+                selector.selectTimeSlot(first)
+            }
+        }
+        let unaccountedTimeLine = HorizontalSectionLine<Int?>(visibleInterval: timeSlotStore.visibleRange){ _ in}
         let unaccountedTimeLabel = UnacountedTimeLabel().inContainer()
         let timeNotchLine = TimeNotchLine(range: timeSlotStore.visibleRange)
-        let cursorLine = HorizontalSectionLine<Int?>(visibleInterval: timeSlotStore.visibleRange)
+        let cursorLine = HorizontalSectionLine<Int?>(visibleInterval: timeSlotStore.visibleRange){ _ in}
         
         self.backingContainer = VStack {
             slotLine
@@ -70,10 +73,17 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         self.slotLine.setVisibleInterval(timeSlotStore.visibleRange)
         
         let unaccountedTimes = slotStore.allocator.getAllUnaccountedTimeUpToNow()
+        let unaccountedTimesInFuture = slotStore.allocator.getAllUnnacountedTimeAfterNow()
+        var unaccountedSections = unaccountedTimes.map{
+            SectionSlot<Int?>(interval: $0, color: .brightRed, data: nil)
+        }
+        
+        unaccountedSections += unaccountedTimesInFuture.map{
+            SectionSlot<Int?>(interval: $0, color: .brightBlue, data: nil)
+        }
+        
         self.unaccountedTimeLine.setVisibleInterval(timeSlotStore.visibleRange)
-        self.unaccountedTimeLine.setSections(unaccountedTimes.map{
-            SectionSlot(interval: $0, color: .brightRed, data: nil)
-        })
+        self.unaccountedTimeLine.setSections(unaccountedSections)
 
         if let unaccountedRange = slotStore.allocator.getUnaccountedTimeFromCursorRestrictedToNow() {
             self.unaccountedTimeLabel.drawable.setUnaccountedTime(unaccountedRange)
@@ -136,9 +146,16 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         }
         
         let unaccountedTimes = slotStore.allocator.getAllUnaccountedTimeUpToNow()
-        self.unaccountedTimeLine.setSections(unaccountedTimes.map{
-            SectionSlot(interval: $0, color: .brightRed, data: nil)
-        })
+        let unaccountedTimesInFuture = slotStore.allocator.getAllUnnacountedTimeAfterNow()
+        var unaccountedSections = unaccountedTimes.map{
+            SectionSlot<Int?>(interval: $0, color: .brightRed, data: nil)
+        }
+        
+        unaccountedSections += unaccountedTimesInFuture.map{
+            SectionSlot<Int?>(interval: $0, color: .brightBlue, data: nil)
+        }
+        
+        self.unaccountedTimeLine.setSections(unaccountedSections)
         
         if let cursor = slotStore.allocator.cursor {
             let cursorRange = slotStore.visibleRange.lowerBound...cursor

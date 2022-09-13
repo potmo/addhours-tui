@@ -35,6 +35,15 @@ class TimeSlotAllocator {
             }
     }
     
+    func getAllUnnacountedTimeAfterNow() -> [ClosedRange<TimeInterval>] {
+        let now = Date().timeIntervalSince1970
+        return unaccountedTime
+            .filter{$0.upperBound > now}
+            .map{
+                return max(now,$0.lowerBound)...$0.upperBound
+            }
+    }
+    
     
     func getUnaccountedTimeFromCursorRestrictedToNow() -> ClosedRange<TimeInterval>? {
         

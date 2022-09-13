@@ -10,6 +10,7 @@ let viewForLog = Log()
 let log: Logger = viewForLog
 let database = Database()
 let dataDispatcher = DataDispatcher()
+let selector = Selector()
 let projectStore = ProjectStore(database: database, dataDispatcher: dataDispatcher)
 let slotStore = TimeSlotStore(database: database,
                               dataDispatcher: dataDispatcher,
@@ -27,16 +28,16 @@ func fatalError(_ message: String, file: String = #file, line: Int = #line) -> N
     exit(1)
 }
 
-let selectedProjectView = SelectedProjectView(projectStore: projectStore, timeSlotStore: slotStore, timer: batchedTimer)
+let selectedProjectView = SelectedProjectView(projectStore: projectStore, timeSlotStore: slotStore)
 
 let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer) {
     VStack{
-        Timeline(timeSlotStore: slotStore, timer: batchedTimer)
+        Timeline(timeSlotStore: slotStore, timer: batchedTimer, selector: selector)
         selectedProjectView
         HSplit(ratio: 0.5,
                left: {
             VStack{
-                ProjectListView(projectStore: projectStore, selectedProjectView: selectedProjectView)
+                ProjectListView(projectStore: projectStore, selector: selector)
                 Button(text: "add project").onPress{ _ in
                     projectStore.addProject(name: "\(Int.random(in: 1...1000))",
                                             color: .rgb(r: UInt8.random(in: 0..<255), g: UInt8.random(in: 0..<255), b: UInt8.random(in: 0..<255)))
@@ -70,7 +71,9 @@ let rootView = TerminalRootView(window: terminal.window, writer: terminal.writer
                                  [Text("4"), Text("5"), Text("5")],
                                  [Text("7"), Text("8"), Text("9")],
                                 ])
-                TextInput(text: Binding(wrappedValue: "hello"))
+                TextInput(text: "hello") { newText in
+                    log.log("changed text to: \(newText)")
+                }
                 Button(text: "Button")
                     .onPress { button in
                         button.text("\(Int.random(in: 1..<1000))")
@@ -142,8 +145,12 @@ batchedTimer.commands.subscribe(with: batchedTimer) { _ in
     rootView.update(with: .tick)
 }
 
-dataDispatcher.commands.subscribe(with: terminal) {
+dataDispatcher.commands.subscribe(with: dataDispatcher) {
     rootView.update(with: .data)
+}
+
+selector.commands.subscribe(with: selector){ selection in
+    rootView.update(with: .selection(selection: selection))
 }
 
 terminal.window.clearScreen()

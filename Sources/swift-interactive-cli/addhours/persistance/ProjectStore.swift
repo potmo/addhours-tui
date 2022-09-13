@@ -73,6 +73,13 @@ class ProjectStore {
         container.signal.subscribe(with: callback, callback: callback.projectModified(_:))
     }
     
+    func clearWhenModifiedFor(project: Project, callback: ProjectModifiedHandler) {
+        guard let container = projects[project.id] else {
+            fatalError("the project does not exist")
+        }
+        container.signal.cancelSubscription(for: callback)
+    }
+    
     class ProjectSignalContainer {
         let signal: Signal<Project>
         var project: Project

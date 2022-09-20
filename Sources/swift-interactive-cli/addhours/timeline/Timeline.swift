@@ -103,8 +103,10 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
     
     
     func draw(with screenWriter: BoundScreenWriter, in bounds: GlobalDrawBounds, force forced: Bool) -> DidRedraw {
-        
-        let listDrew = backingContainer.draw(with: screenWriter, in: bounds, force: forced)
+
+        // if we are going to redraw the unaccountedTimeLabel we need to redraw the container too first to
+        // flush out the old label
+        let listDrew = backingContainer.draw(with: screenWriter, in: bounds, force: forced || unaccountedTimeLabel.requiresRedraw == .yes)
         updateTimeLabelBounds(in: bounds)
         unaccountedTimeLabel = unaccountedTimeLabel.draw(with: screenWriter, force: forced || listDrew == .drew)
         
@@ -116,19 +118,31 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         if cause == .tick {
             timer.requestTick(in: updateTick)
         }
+
+        //if case let .selection(.timeSlot(slot)) = cause {
+            //slotLine.selectElements(elements: [slot])
+        //}
+
+        //if case .selection(.project) = cause {
+            //slotLine.selectElements(elements: [])
+        //}
         
         switch cause {
             case .keyboard(.pressKey(code: "q", modifers: .ctrl)):
-                slotStore.moveVisibleRange(by: -60*10)
+                let moveSpeed = slotStore.visibleRange.duration * 0.05
+                slotStore.moveVisibleRange(by: -moveSpeed)
                 log.log("Moving timeline left")
             case .keyboard(.pressKey(code: "w", modifers: .ctrl)):
-                slotStore.moveVisibleRange(by: 60*10)
+                let moveSpeed = slotStore.visibleRange.duration * 0.05
+                slotStore.moveVisibleRange(by: moveSpeed)
                 log.log("Moving timeline right")
             case .keyboard(.pressKey(code: "a", modifers: .ctrl)):
-                slotStore.modifyVisibleRange(lowerBoundsBy: -60*60, upperBoundsBy: 60*60)
+                let moveSpeed = slotStore.visibleRange.duration * 0.05
+                slotStore.modifyVisibleRange(lowerBoundsBy: -moveSpeed, upperBoundsBy: moveSpeed)
                 log.log("zoom out timeline ")
             case .keyboard(.pressKey(code: "s", modifers: .ctrl)):
-                slotStore.modifyVisibleRange(lowerBoundsBy: 60*60, upperBoundsBy: -60*60)
+                let moveSpeed = slotStore.visibleRange.duration * 0.05
+                slotStore.modifyVisibleRange(lowerBoundsBy: moveSpeed, upperBoundsBy: -moveSpeed)
                 log.log("zoom in timeline ")
             default:
                 break
@@ -147,18 +161,19 @@ class Timeline: Drawable, TimeSlotModifiedHandler {
         
         let unaccountedTimes = slotStore.allocator.getAllUnaccountedTimeUpToNow()
         let unaccountedTimesInFuture = slotStore.allocator.getAllUnnacountedTimeAfterNow()
-        var unaccountedSections = unaccountedTimes.map{
+
+        let unaccountedTimeSection = unaccountedTimes.map{
             SectionSlot<Int?>(interval: $0, color: .brightRed, data: nil)
         }
         
-        unaccountedSections += unaccountedTimesInFuture.map{
+        let unaccountedTimeSectionInfFuture = unaccountedTimesInFuture.map{
             SectionSlot<Int?>(interval: $0, color: .brightBlue, data: nil)
         }
         
-        self.unaccountedTimeLine.setSections(unaccountedSections)
+        self.unaccountedTimeLine.setSections(unaccountedTimeSection + unaccountedTimeSectionInfFuture)
         
         if let cursor = slotStore.allocator.cursor {
-            let cursorRange = slotStore.visibleRange.lowerBound...cursor
+            let cursorRange = slotStore.visibleRange.lowerBound...max(slotStore.visibleRange.lowerBound, cursor)
             self.cursorLine.setSections([SectionSlot(interval: cursorRange, color: .rgb(r: 0, g: 0, b: 200), data: nil)])
         }else{
             let cursorRange = slotStore.visibleRange

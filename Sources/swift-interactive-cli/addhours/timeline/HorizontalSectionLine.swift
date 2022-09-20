@@ -4,23 +4,23 @@ class HorizontalSectionLine<DataType: Equatable>: Drawable {
     
     private var needsRedraw: RequiresRedraw = .yes
     private var visibleInterval: ClosedRange<TimeInterval>// = TimeInterval.todayWithTime(hour: 9, minute: 0)...TimeInterval.todayWithTime(hour: 18, minute: 0)
-    private var timeslots: [SectionSlot<DataType>]
+    private var slots: [SectionSlot<DataType>]
     private var printSlots: [[HorizontalSectionLine<DataType>.FillAmount]]
     private let selectCallback: ([DataType]) -> Void
     
     init(visibleInterval: ClosedRange<TimeInterval>, _ selectCallback: @escaping ([DataType]) -> Void) {
         self.visibleInterval = visibleInterval
-        self.timeslots = []
+        self.slots = []
         self.printSlots = []
         self.selectCallback = selectCallback
     }
     
     func setSections(_ sections: [SectionSlot<DataType>]) {
-        if timeslots == sections {
+        if slots == sections {
             return
         }
         
-        timeslots = sections
+        slots = sections
         self.needsRedraw = .yes
     }
     
@@ -214,7 +214,7 @@ class HorizontalSectionLine<DataType: Equatable>: Drawable {
         //TODO: This shold probably be done in update instead or even when sections are set
         var fillIntervalSlots = Array(repeating: Array<FillAmount>(), count: bounds.width)
         
-        timeslots.filter{$0.interval.duration > 0}.forEach { slot in
+        slots.filter{$0.interval.duration > 0}.forEach { slot in
             fillIntervals.enumerated().forEach{ cursor in
                 let fillInterval = cursor.element
                 if fillInterval.contains(slot.interval) {

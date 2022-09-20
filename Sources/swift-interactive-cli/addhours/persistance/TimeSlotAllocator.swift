@@ -8,16 +8,21 @@ class TimeSlotAllocator {
     
     //TODO: Make this variable
     var cursor: TimeInterval? {
-        
-        let unallocated = unallocatedTime.map(\.lowerBound).filter{visibleRange.contains($0)}.last
-        
-        if let unallocated = unallocated {
-            return unallocated
-        }else{
-            return nil
+
+        let lastUnaccounted = unaccountedTime.map(\.lowerBound).filter({visibleRange.contains($0)}).last
+        let lastUnallocated = unallocatedTime.last?.lowerBound
+
+        if let lastUnaccounted, let lastUnallocated {
+            return max(lastUnaccounted, lastUnallocated)
         }
-        
-        
+
+        if let lastUnaccounted {
+            return lastUnaccounted
+        }
+
+        return lastUnallocated
+
+
     }
     
     init() {
@@ -99,8 +104,10 @@ class TimeSlotAllocator {
                                               selectedRange: ClosedRange<TimeInterval>,
                                               safeBefore: TimeInterval?,
                                               safeAfter: TimeInterval?) -> [ClosedRange<TimeInterval>] {
-        
-        var timeRemaining = (safeBefore ?? -Double.greatestFiniteMagnitude)...(safeAfter ?? Double.greatestFiniteMagnitude)
+
+        let start = safeBefore ?? min(timeSlots.first?.range.lowerBound ?? selectedRange.lowerBound, selectedRange.lowerBound)
+        let end = safeAfter ?? max(timeSlots.last?.range.upperBound ?? selectedRange.upperBound, selectedRange.upperBound)
+        var timeRemaining = start...end
         var result: [ClosedRange<TimeInterval>] = []
         
         let slotTimeRanges = timeSlots.map(\.range).mergeAdjecent()
@@ -108,6 +115,9 @@ class TimeSlotAllocator {
         for timeSlot in slotTimeRanges {
             let range = timeRemaining.lowerBound...timeSlot.lowerBound
             timeRemaining = timeSlot.upperBound...timeRemaining.upperBound
+            if range.isEmpty {
+             continue
+            }
             result.append(range)
         }
         

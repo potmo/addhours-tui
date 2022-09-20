@@ -179,6 +179,37 @@ enum Color: Equatable {
         let blue = UInt8(value & 0xFF)
         return Color.rgb(r: red, g: green, b: blue)
     }
+
+    func lighten(by factor: Double) -> Color {
+        switch self {
+            case .none:
+                return self
+            case .ansi:
+                return self
+            case .rgb(let r, let g, let b):
+
+                var red = Double(r)
+                var green = Double(g)
+                var blue = Double(b)
+                let clampedFactor = factor.clamped(to: -1...1)
+
+                if (factor < 0)
+                {
+                    red *= 1 + clampedFactor
+                    green *= 1 + clampedFactor
+                    blue *= 1 + clampedFactor
+                }
+                else
+                {
+                    red = (255 - red) * clampedFactor + red;
+                    green = (255 - green) * clampedFactor + green;
+                    blue = (255 - blue) * clampedFactor + blue;
+                }
+
+
+                return Color.rgb(r: UInt8(red), g: UInt8(green), b: UInt8(blue))
+        }
+    }
     
     func toInt() -> Int {
         switch self {
